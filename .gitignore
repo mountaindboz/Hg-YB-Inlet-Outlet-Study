@@ -2,7 +2,3 @@
 .Rhistory
 .RData
 .Ruserdata
-
-# Files for the Big Notch Project- keep these private for now
-*for_BNP.Rmd
-*for_BNP.html
