@@ -6,7 +6,7 @@
 #'     variable as long as it has the same number of groups that is specified
 #'     in \code{num_colors}.
 #'
-#' @param numb_colors An integer representing the number of colors for the
+#' @param num_colors An integer representing the number of colors for the
 #'     palette. Must be between 2-4.
 #' @param aes_type The aesthetic type to apply the palette to. Must be
 #'     either \code{"fill"} or \code{"color"}.

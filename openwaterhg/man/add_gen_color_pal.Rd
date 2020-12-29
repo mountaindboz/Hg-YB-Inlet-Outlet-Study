@@ -11,14 +11,14 @@ add_gen_color_pal(
 )
 }
 \arguments{
+\item{num_colors}{An integer representing the number of colors for the
+palette. Must be between 2-4.}
+
 \item{aes_type}{The aesthetic type to apply the palette to. Must be
 either \code{"fill"} or \code{"color"}.}
 
 \item{legend_title}{An optional argument used to provide a title for the
 legend of the color palette. Default is \code{NULL}.}
-
-\item{numb_colors}{An integer representing the number of colors for the
-palette. Must be between 2-4.}
 }
 \value{
 A ggplot object with a custom color palette applied to it
