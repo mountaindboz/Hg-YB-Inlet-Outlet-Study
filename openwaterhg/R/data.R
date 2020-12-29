@@ -14,7 +14,7 @@
 #'     solid-bound phase, and a decreasing trend indicates greater partitioning
 #'     to the filtered or dissolved phase.}
 #' \item{Percent MeHg Concentration of the THg Concentration}{The percent of
-#'     THg thatis MeHg. An increasing trend indicates more of the total mercury
+#'     THg that is MeHg. An increasing trend indicates more of the total mercury
 #'     is methylmercury. Values for all three fractions (filtered, particulate,
 #'     and unfiltered) are provided.}
 #' \item{THg or MeHg normalized by OC}{Either THg or MeHg concentrations
@@ -47,7 +47,7 @@
 #' @format data frame with 3,398 rows and 13 columns
 #' \describe{
 #' \item{SampleCode}{The unique identifier for each sample produced by Bryte Lab}
-#' \item{StationName}{The station name where the water samples were collected}
+#' \item{StationName}{The station name where the water sample was collected}
 #' \item{SampleDate}{The sampling date}
 #' \item{CollectionTime}{The sample collection time in PST}
 #' \item{Analyte}{The analytical parameter measured}
@@ -69,7 +69,7 @@
 #'     in analyses. "BD" indicates that there was a detection in a blank sample
 #'     associated with the sample. "FV" indicates that there was a RPD value greater
 #'     than its acceptable limit in a field duplicate pair associated with the
-#'     sample, which could be due to variablity in the sampling method or the
+#'     sample, which could be due to variability in the sampling method or the
 #'     water being sampled. "FGT" indicates that the value of the filtered sample
 #'     was greater than its associated total sample. "NRS" indicates that the sample
 #'     may not have been representative of waterbody. The reason is explained in
@@ -224,9 +224,10 @@
 #' \item{LabComments}{Comments provided by the analytical laboratory}
 #' \item{MME_Comments}{Comments provided by staff from the Mercury Monitoring and
 #'     Evaluation section}
-#' \item{AmbSampConc}{The concentration of the ambient or environmental sample
-#'     collected at the same station and date as the blank sample. This value is
-#'     only provided for blanks that had a detected value.}
+#' \item{AmbSampConc}{Either the concentration of the ambient or environmental sample
+#'     collected at the same station and date as the field blank sample, or the 
+#'     average concentration of all ambient samples associated with the filter blank 
+#'     sample. This value is only provided for blanks that had a detected value.}
 #' \item{Blank_Amb_ratio}{The ratio of the blank sample concentration to the
 #'     \code{AmbSampConc} value expressed as a percent. Samples with percentages
 #'     of 20% and below were not flagged as a blank detection. If this percentage
@@ -265,7 +266,7 @@
 #' \item{Result_FD}{The analytical result of the field duplicate sample}
 #' \item{RPD}{The relative percent difference between the field duplicate sample
 #'     and the associated parent sample. This was calculated as the absolute
-#'     diference between the two values divided by their average and expressed as
+#'     difference between the two values divided by their average and expressed as
 #'     a percent. RPD's greater than their Measurement Quality Objectives were
 #'     flagged as "FV" in \code{Flag}. This only applied to duplicate pairs
 #'     where at least one value was greater than ten times the Reporting Limit.}

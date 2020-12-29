@@ -34,7 +34,7 @@ Contains all combined parameter data for the Yolo Bypass
     solid-bound phase, and a decreasing trend indicates greater partitioning
     to the filtered or dissolved phase.}
 \item{Percent MeHg Concentration of the THg Concentration}{The percent of
-    THg thatis MeHg. An increasing trend indicates more of the total mercury
+    THg that is MeHg. An increasing trend indicates more of the total mercury
     is methylmercury. Values for all three fractions (filtered, particulate,
     and unfiltered) are provided.}
 \item{THg or MeHg normalized by OC}{Either THg or MeHg concentrations

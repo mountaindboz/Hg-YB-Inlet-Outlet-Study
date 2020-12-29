@@ -8,7 +8,7 @@
 data frame with 3,398 rows and 13 columns
 \describe{
 \item{SampleCode}{The unique identifier for each sample produced by Bryte Lab}
-\item{StationName}{The station name where the water samples were collected}
+\item{StationName}{The station name where the water sample was collected}
 \item{SampleDate}{The sampling date}
 \item{CollectionTime}{The sample collection time in PST}
 \item{Analyte}{The analytical parameter measured}
@@ -30,7 +30,7 @@ data frame with 3,398 rows and 13 columns
     in analyses. "BD" indicates that there was a detection in a blank sample
     associated with the sample. "FV" indicates that there was a RPD value greater
     than its acceptable limit in a field duplicate pair associated with the
-    sample, which could be due to variablity in the sampling method or the
+    sample, which could be due to variability in the sampling method or the
     water being sampled. "FGT" indicates that the value of the filtered sample
     was greater than its associated total sample. "NRS" indicates that the sample
     may not have been representative of waterbody. The reason is explained in

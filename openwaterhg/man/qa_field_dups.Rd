@@ -24,7 +24,7 @@ data frame with 460 rows and 19 columns
 \item{Result_FD}{The analytical result of the field duplicate sample}
 \item{RPD}{The relative percent difference between the field duplicate sample
     and the associated parent sample. This was calculated as the absolute
-    diference between the two values divided by their average and expressed as
+    difference between the two values divided by their average and expressed as
     a percent. RPD's greater than their Measurement Quality Objectives were
     flagged as "FV" in \code{Flag}. This only applied to duplicate pairs
     where at least one value was greater than ten times the Reporting Limit.}

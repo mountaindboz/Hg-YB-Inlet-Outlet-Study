@@ -21,9 +21,10 @@ data frame with 460 rows and 14 columns
 \item{LabComments}{Comments provided by the analytical laboratory}
 \item{MME_Comments}{Comments provided by staff from the Mercury Monitoring and
     Evaluation section}
-\item{AmbSampConc}{The concentration of the ambient or environmental sample
-    collected at the same station and date as the blank sample. This value is
-    only provided for blanks that had a detected value.}
+\item{AmbSampConc}{Either the concentration of the ambient or environmental sample
+    collected at the same station and date as the field blank sample, or the 
+    average concentration of all ambient samples associated with the filter blank 
+    sample. This value is only provided for blanks that had a detected value.}
 \item{Blank_Amb_ratio}{The ratio of the blank sample concentration to the
     \code{AmbSampConc} value expressed as a percent. Samples with percentages
     of 20% and below were not flagged as a blank detection. If this percentage
