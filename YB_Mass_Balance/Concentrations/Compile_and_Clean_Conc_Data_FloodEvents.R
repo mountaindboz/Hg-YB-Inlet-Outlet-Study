@@ -318,11 +318,11 @@ lab_rep_data <-
   reduce(list(S_Conc, S_Result, lab_reps_i), left_join) %>% 
   # Calculate RPD values for each replicate pair and flag if necessary
   mutate(
-    rpd = round(abs(Conc1 - Conc2)/((Conc1 + Conc2)/2), 3),
+    RPD = round(abs(Conc1 - Conc2)/((Conc1 + Conc2)/2), 3),
     Flag = case_when(
-      Analyte %in% contract_ana & rpd > 0.25 & (Conc1 > 10 * MDL | Conc2 > 10 * MDL) ~ "y",
-      !Analyte %in% contract_ana & rpd > 0.25 & (Conc1 > 10 * RL | Conc2 > 10 * RL) ~ "y",
-      TRUE ~ "n"
+      Analyte %in% contract_ana & RPD > 0.25 & (Conc1 > 10 * MDL | Conc2 > 10 * MDL) ~ "y",
+      !Analyte %in% contract_ana & RPD > 0.25 & (Conc1 > 10 * RL | Conc2 > 10 * RL) ~ "y",
+      TRUE ~ NA_character_
     )
   )
 
@@ -337,7 +337,7 @@ lab_rep_data <-
 #     LabBatch,
 #     Result1,
 #     Result2,
-#     rpd,
+#     RPD,
 #     ResQual,
 #     RL,
 #     MDL,
@@ -346,7 +346,7 @@ lab_rep_data <-
 #     Flag
 #   ) %>%
 #   write_excel_csv("LabReplicates.csv", na = "")
-    
+
 # Modify the lab_rep_data df
 lab_rep_data_mod <- lab_rep_data %>% 
   mutate(
