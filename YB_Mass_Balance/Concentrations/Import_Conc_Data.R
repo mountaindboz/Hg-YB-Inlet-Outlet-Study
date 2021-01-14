@@ -13,15 +13,9 @@ temp_conc_clean <- conc_data %>%
   # Remove samples with QualCode "R"
   filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
   # Create a new variable Conc, which is a numeric version of Result with the MDL and RL for the ND values
-  mutate(
-    Conc = case_when(
-      Result == "< RL"  ~ RL,
-      Result == "< MDL" ~ MDL,
-      TRUE              ~ as.numeric(Result)
-    )
-  ) %>% 
+  add_num_result() %>% 
   # Clean up df
-  select(SampleCode:Analyte, Conc, ResQual:QualCode)
+  select(SampleCode:Analyte, Conc, RL:QualCode)
 
 # Bind conc_data with calculated data for the particulate fractions of Hg, MeHg, and organic carbon
 all_conc <- bind_rows(temp_conc_clean, part_conc_calc)
