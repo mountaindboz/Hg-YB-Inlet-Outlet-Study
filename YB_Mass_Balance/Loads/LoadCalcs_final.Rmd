@@ -38,7 +38,7 @@ library(openwaterhg)
 
 The code in this file uses the datasets included in the `openwaterhg` package. The following datasets in this R package are exactly the same as the water concentration and flow data in the following files:
 
-1. The `conc_data` dataset contains all water concentration data collected for the Yolo Bypass Mass Balance Study. This dataset originated from the **"Normal Data"** sheet in the **"YB_Inlet_Outlet_Conc_Data.xlsx"** spreadsheet and contains the exact same concentration data. The raw data for this dataset were integrated, cleaned, and QA'ed in the [/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R) script file within the Open-Water-Hg-Studies GitHub repository.
+1. The `conc_data` dataset contains all water concentration data collected for the Yolo Bypass Mass Balance Study. This dataset originated from the **"NormalSamples.csv"** file and contains the exact same concentration data. The raw data for this dataset were integrated, cleaned, and QA'ed in the [/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R) script file within the Open-Water-Hg-Studies GitHub repository.
 2. The `daily_flow_data_se` dataset contains daily average flow data for the 11 sampling events conducted for the Yolo Bypass Mass Balance study. This dataset originated from the **"Sampling Event Flows"** sheet in the **"YB_Daily_Avg_Flow.xlsx"** spreadsheet and contains the exact same flow data. The raw data for this dataset were integrated, cleaned, and averaged in the [/YB_Mass_Balance/Flows/Process_Flow_Data.R](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Flows/Process_Flow_Data.R) script file within the Open-Water-Hg-Studies GitHub repository.
 3. `part_conc_calc` contains the calculated particulate concentration data for mercury, methylmercury, and organic carbon for the Yolo Bypass Mass Balance Study. Particulate concentrations were calculated as the difference between the unfiltered and filtered concentrations. The calculations for this dataset are in the [/YB_Mass_Balance/Concentrations/Calculate_Particulate_Fractions.R](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Calculate_Particulate_Fractions.R) script file within the Open-Water-Hg-Studies GitHub repository.
 
@@ -62,7 +62,7 @@ conc_data_clean <- conc_data %>%
   # Create a new variable Conc, which is a numeric version of Result with the MDL and RL for the below detection values
   add_num_result() %>% 
   # Clean up df
-  select(SampleCode:Analyte, Conc, ResQual:QualCode)
+  select(SampleCode:Analyte, Conc, RL:QualCode)
 
 # Bind conc_data with calculated data for the particulate fractions of Hg, MeHg, and organic carbon
 all_conc <- bind_rows(conc_data_clean, part_conc_calc)
@@ -714,12 +714,12 @@ loads_f <- loads2 %>%
 
 ## Export Loads
 
-The calculated loads are now ready to be exported as a .csv file. This file will be added to the SharePoint site for the Open Water Final Report in the following location: [/Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/All_YB_Loads.xlsx](https://cawater.sharepoint.com/:x:/r/sites/dwrdoc-owfr/Shared%20Documents/Technical%20Appendices/Technical%20Appendix-B_Inlet-Outlet/Data/Final/All_YB_Loads.xlsx?d=w172aceb35e0746e78ec277ac9b39c6b5&csf=1&web=1&e=eePBkB). We will also add this dataset of calculated loads to the `openwaterhg` package as `loads_calc`.
+The calculated loads are now ready to be exported as a .csv file. This file will be added to the SharePoint site for the Open Water Final Report in the following location: [/Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Loads.xlsx](https://cawater.sharepoint.com/:x:/r/sites/dwrdoc-owfr/Shared%20Documents/Technical%20Appendices/Technical%20Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Loads.xlsx?d=w172aceb35e0746e78ec277ac9b39c6b5&csf=1&web=1&e=Irw40X). We will also add this dataset of calculated loads to the `openwaterhg` package as `loads_calc`.
 
 ```{r export load data as csv, eval = FALSE}
 # Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
 # change eval option to TRUE when you want to export the data when knitting this file
-loads_f %>% write_excel_csv("All_YB_Loads.csv", na = "")
+loads_f %>% write_excel_csv("YB_Loads.csv", na = "")
 ```
 
 End of script
