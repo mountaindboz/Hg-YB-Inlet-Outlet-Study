@@ -22,13 +22,13 @@ legend of the color palette. Default is \code{NULL}.}
 }
 \value{
 A ggplot object with a custom color palette applied to it
-    with the specified number of colors and aesthetic type.
+with the specified number of colors and aesthetic type.
 }
 \description{
 Applies a custom color palette for 2-4 groups to be used
-    in figures in the final report for the Open Water Mercury studies.
-    The palette is based on the Viridis palette. Function is to be used
-    on ggplot objects. Can be used to represent any categorical grouping
-    variable as long as it has the same number of groups that is specified
-    in \code{num_colors}.
+in figures in the final report for the Open Water Mercury studies.
+The palette is based on the Viridis palette. Function is to be used
+on ggplot objects. Can be used to represent any categorical grouping
+variable as long as it has the same number of groups that is specified
+in \code{num_colors}.
 }

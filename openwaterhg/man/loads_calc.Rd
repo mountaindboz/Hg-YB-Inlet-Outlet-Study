@@ -5,13 +5,14 @@
 \alias{loads_calc}
 \title{Calculated Mass Loads}
 \format{
-data frame with 1,460 rows and 10 columns
+data frame with 1,460 rows and 8 columns
 \describe{
 \item{SamplingEvent}{The sampling event for the mass load value}
-\item{Year}{The year of the flood}
+\item{Year}{The year of the flood event}
 \item{StationName}{The station name}
 \item{LocType}{A categorical variable indicating whether the station was an
-    inlet, outlet, or Below Liberty Island location}
+inlet, outlet, or Below Liberty Island location. See Technical Appendix B
+in the Open Water Final Report for more information.}
 \item{Analyte}{The analytical parameter for the mass load value}
 \item{Load}{The calculated mass load value}
 \item{LoadUnits}{The units of the load value}
@@ -23,7 +24,8 @@ loads_calc
 }
 \description{
 Contains calculated mass loads for the Yolo Bypass Mass Balance
-    Study. The calculations for this dataset are in the
-    "YB_Mass_Balance/Loads/All_LoadCalcs.R" script file.
+Study. The calculations for this dataset are in the
+\href{https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Loads/LoadCalcs_final.Rmd}{YB_Mass_Balance/Loads/LoadCalcs_final.Rmd}
+script file.
 }
 \keyword{datasets}

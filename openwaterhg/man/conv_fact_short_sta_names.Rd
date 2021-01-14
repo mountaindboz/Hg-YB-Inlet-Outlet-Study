@@ -8,9 +8,9 @@ conv_fact_short_sta_names(df)
 }
 \arguments{
 \item{df}{The dataframe to apply the function to. Dataframe must have
-    a character variable named \code{ShortName}. Each observation under
-    the \code{ShortName} variable must have one of the following
-    values:
+a character variable named \code{ShortName}. Each observation under
+the \code{ShortName} variable must have one of the following
+values:
 \itemize{
 \item Cache Sl
 \item CCSB- LFC
@@ -34,11 +34,11 @@ conv_fact_short_sta_names(df)
 }
 \value{
 A dataframe with the \code{ShortName} variable converted to
-    a factor
+a factor
 }
 \description{
 Converts the \code{ShortName} variable from a character
-    variable to a factor variable to apply a consistent order in
-    plots of the data. The \code{ShortName} variable contains a
-    standardized set of shorter station names.
+variable to a factor variable to apply a consistent order in
+plots of the data. The \code{ShortName} variable contains a
+standardized set of shorter station names.
 }

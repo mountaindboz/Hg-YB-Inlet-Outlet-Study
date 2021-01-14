@@ -21,8 +21,8 @@ loads_flow_cf
 }
 \description{
 Contains total daily inflow and inlet, outlet, and net methylmercury
-    load data from the 2006 flood event in the Yolo Bypass as presented in the
-    CALFED 2008 report. This dataset is used as a comparison to the MeHg loads
-    from the Yolo Bypass Mass Balance study.
+load data from the 2006 flood event in the Yolo Bypass as presented in the
+CALFED 2008 report. This dataset is used as a comparison to the MeHg loads
+from the Yolo Bypass Mass Balance Study.
 }
 \keyword{datasets}

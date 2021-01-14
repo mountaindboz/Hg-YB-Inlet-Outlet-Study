@@ -20,30 +20,30 @@ comb_param_calc
 }
 \description{
 Contains all combined parameter data for the Yolo Bypass
-    Mass Balance Study. The calculations for this dataset are in the
-    "YB_Mass_Balance/Concentrations/CombinedCalcs_Plots_and_SummaryStats.R"
-    script file. The combined parameters include:
+Mass Balance Study. The calculations for this dataset are in the
+\href{https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Calculate_CombinedParams.R}{YB_Mass_Balance/Concentrations/Calculate_CombinedParams.R}
+script file. The combined parameters include:
 \describe{
 \item{THg and MeHg Concentrations on Solids}{Provide estimates of the
-    amount of total mercury or methylmercury bound to the suspended
-    sediment. An increasing or decreasing trend in these parameters
-    indicate either an enrichment or reduction of Hg or MeHg on suspended
-    particles.}
+amount of total mercury or methylmercury bound to the suspended
+sediment. An increasing or decreasing trend in these parameters
+indicate either an enrichment or reduction of Hg or MeHg on suspended
+particles.}
 \item{THg and MeHg Partitioning Coefficients (Kd)}{An increasing trend in
-    these parameters indicates greater partitioning of Hg or MeHg to the
-    solid-bound phase, and a decreasing trend indicates greater partitioning
-    to the filtered or dissolved phase.}
+these parameters indicates greater partitioning of Hg or MeHg to the
+solid-bound phase, and a decreasing trend indicates greater partitioning
+to the filtered or dissolved phase.}
 \item{Percent MeHg Concentration of the THg Concentration}{The percent of
-    THg that is MeHg. An increasing trend indicates more of the total mercury
-    is methylmercury. Values for all three fractions (filtered, particulate,
-    and unfiltered) are provided.}
+THg that is MeHg. An increasing trend indicates more of the total mercury
+is methylmercury. Values for all three fractions (filtered, particulate,
+and unfiltered) are provided.}
 \item{THg or MeHg normalized by OC}{Either THg or MeHg concentrations
-    divided by organic carbon concentrations. Values for all three fractions
-    (filtered, particulate, and unfiltered) are provided.}
+divided by organic carbon concentrations. Values for all three fractions
+(filtered, particulate, and unfiltered) are provided.}
 \item{TOC or POC Concentrations on solids}{Either TOC or POC concentrations
-    divided by the TSS concentration multiplied by 1,000.}
+divided by the TSS concentration multiplied by 1,000.}
 \item{Total Aluminum Concentration on Solids}{The total aluminum
-    concentration divided by the TSS concentration multiplied by 1,000.}
+concentration divided by the TSS concentration multiplied by 1,000.}
 }
 }
 \keyword{datasets}

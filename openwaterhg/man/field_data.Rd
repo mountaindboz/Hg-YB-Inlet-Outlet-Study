@@ -21,7 +21,7 @@ field_data
 }
 \description{
 Contains field measurements collected for the Yolo Bypass
-    Mass Balance Study. Measurements include Water Temperature, Specific
-    Conductance, Dissolved Oxygen, and Turbidity.
+Mass Balance Study. Measurements include Water Temperature, Specific
+Conductance, Dissolved Oxygen, and Turbidity.
 }
 \keyword{datasets}

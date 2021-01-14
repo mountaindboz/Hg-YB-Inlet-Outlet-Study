@@ -8,9 +8,9 @@ conv_fact_long_sta_names(df)
 }
 \arguments{
 \item{df}{The dataframe to apply the function to. Dataframe must have
-    a character variable named \code{StationName}. Each observation
-    under the \code{StationName} variable must have one of the
-    following values:
+a character variable named \code{StationName}. Each observation
+under the \code{StationName} variable must have one of the
+following values:
 \itemize{
 \item Cache Slough near Ryer Island
 \item CCSB- Low Flow Channel
@@ -34,11 +34,11 @@ conv_fact_long_sta_names(df)
 }
 \value{
 A dataframe with the \code{StationName} variable converted to
-    a factor
+a factor
 }
 \description{
 Converts the \code{StationName} variable from a character
-    variable to a factor variable to apply a consistent order in
-    plots of the data. The \code{StationName} variable contains a
-    standardized set of longer station names.
+variable to a factor variable to apply a consistent order in
+plots of the data. The \code{StationName} variable contains a
+standardized set of longer station names.
 }

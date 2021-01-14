@@ -5,36 +5,25 @@
 \alias{conc_data}
 \title{Concentration Data in Water}
 \format{
-data frame with 3,398 rows and 13 columns
+data frame with 3,398 rows and 12 columns
 \describe{
 \item{SampleCode}{The unique identifier for each sample produced by Bryte Lab}
 \item{StationName}{The station name where the water sample was collected}
 \item{SampleDate}{The sampling date}
 \item{CollectionTime}{The sample collection time in PST}
 \item{Analyte}{The analytical parameter measured}
-\item{Result}{The analytical result}
-\item{ResQual}{A numeric variable that represents whether the result was below
-    the detection limit (RL or MDL). A value of "0" indicates that the result
-    was detected, a value of "1" indicates that the result was below the
-    detection limit, and a value of "0.5" indicates that either the replicate
-    or parent sample was below the detection limit.}
+\item{Result}{The analytical result. "< RL" or "< MDL" indicates that the result
+was less than the Reporting Limit or Method Detection Limit, respectively.
+The results for samples that have associated field duplicates or lab replicates
+are the average of the two values.}
 \item{RL}{The analytical reporting limit of the sample}
 \item{MDL}{The analytical method detection limit of the sample}
 \item{Units}{The units of the result}
 \item{LabComments}{Comments provided by the analytical laboratory}
-\item{MME_Comments}{Comments provided by staff from the Mercury Monitoring and
-    Evaluation section}
-\item{QualCode}{Qualification code(s) for the sample. "J" indicates that there
-    was an issue with the sample, but it is still being used in analyses. "R"
-    indicates that there was an issue with the sample, and it is not being used
-    in analyses. "BD" indicates that there was a detection in a blank sample
-    associated with the sample. "FV" indicates that there was a RPD value greater
-    than its acceptable limit in a field duplicate pair associated with the
-    sample, which could be due to variability in the sampling method or the
-    water being sampled. "FGT" indicates that the value of the filtered sample
-    was greater than its associated total sample. "NRS" indicates that the sample
-    may not have been representative of waterbody. The reason is explained in
-    the MME Comments.}
+\item{MME_Comments}{Comments provided by staff from the DWR Mercury Monitoring and
+Evaluation section}
+\item{QualCode}{Qualification code(s) for the sample. See
+\link[=qual_codes_flags]{Qual Codes and Flags} for more information.}
 }
 }
 \usage{
@@ -42,7 +31,12 @@ conc_data
 }
 \description{
 Contains all water concentration data collected for the Yolo Bypass
-    Mass Balance Study. The raw data for this dataset were integrated,
-    cleaned, and QA'ed in the "Compile_and_Clean_Conc_Data_FloodEvents.R" script file.
+Mass Balance Study which were used for load estimates and other analyses. This
+dataset only contains data for normal samples; field QA data (blanks and duplicates)
+and laboratory QA data (replicates, laboratory control samples, blanks, matrix spikes)
+are excluded from this dataset. Field QA data are provided in \code{\link{qa_field_blanks}} and
+\code{\link{qa_field_dups}}. The raw data for this dataset were integrated, cleaned, and QA'ed
+in the \href{https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R}{YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R}
+script file.
 }
 \keyword{datasets}

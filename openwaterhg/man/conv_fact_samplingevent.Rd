@@ -8,9 +8,9 @@ conv_fact_samplingevent(df)
 }
 \arguments{
 \item{df}{The dataframe to apply the function to. Dataframe must have
-    a character variable named \code{SamplingEvent}. Each observation
-    under the \code{SamplingEvent} variable must have one of the
-    following values:
+a character variable named \code{SamplingEvent}. Each observation
+under the \code{SamplingEvent} variable must have one of the
+following values:
 \itemize{
 \item Dec 22-23, 2014
 \item Mar 15-16, 2016
@@ -27,11 +27,11 @@ conv_fact_samplingevent(df)
 }
 \value{
 A dataframe with the \code{SamplingEvent} variable converted
-    to a factor
+to a factor
 }
 \description{
 Converts the \code{SamplingEvent} variable from a
-    character variable to a factor variable to apply a consistent
-    order in plots of the data. The \code{SamplingEvent} variable
-    contains a standardized set of sampling event names.
+character variable to a factor variable to apply a consistent
+order in plots of the data. The \code{SamplingEvent} variable
+contains a standardized set of sampling event names.
 }

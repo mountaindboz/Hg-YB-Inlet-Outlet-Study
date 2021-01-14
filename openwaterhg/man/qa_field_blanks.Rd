@@ -5,33 +5,37 @@
 \alias{qa_field_blanks}
 \title{Field and Filter Blanks Collected in Association with \code{conc_data}}
 \format{
-data frame with 460 rows and 14 columns
+data frame with 460 rows and 15 columns
 \describe{
 \item{SampleCode}{The unique identifier for each field or filter blank sample
-    produced by Bryte Lab}
+produced by Bryte Lab}
 \item{StationName}{The name of the blank sample, either Field Blank or Filter
-    Blank}
+Blank}
 \item{SampleDate}{The collection date of the blank sample}
 \item{CollectionTime}{The collection time of the blank sample in PST}
 \item{Analyte}{The analytical parameter measured}
-\item{Result}{The analytical result}
-\item{RL}{The analytical reporting limit of the sample}
-\item{MDL}{The analytical method detection limit of the sample}
+\item{Result}{The analytical result of the blank sample. "< RL" or "< MDL" indicates
+that the result was less than the Reporting Limit or Method Detection Limit,
+respectively.}
+\item{ResultQual}{Result qualifier for the blank sample. See
+\link[=qual_codes_flags]{Qual Codes and Flags} for more information.}
+\item{RL}{The analytical reporting limit of the blank sample}
+\item{MDL}{The analytical method detection limit of the blank sample}
 \item{Units}{The units of the result}
 \item{LabComments}{Comments provided by the analytical laboratory}
-\item{MME_Comments}{Comments provided by staff from the Mercury Monitoring and
-    Evaluation section}
+\item{MME_Comments}{Comments provided by staff from the DWR Mercury Monitoring and
+Evaluation section}
 \item{AmbSampConc}{Either the concentration of the ambient or environmental sample
-    collected at the same station and date as the field blank sample, or the 
-    average concentration of all ambient samples associated with the filter blank 
-    sample. This value is only provided for blanks that had a detected value.}
+collected at the same station and date as the field blank sample, or the
+average concentration of all ambient samples associated with the filter blank
+sample. This value is only provided for blanks that had a detected value.}
 \item{Blank_Amb_ratio}{The ratio of the blank sample concentration to the
-    \code{AmbSampConc} value expressed as a percent. Samples with percentages
-    of 20% and below were not flagged as a blank detection. If this percentage
-    was greater than 20%, all samples collected on the same day were flagged as
-    "BD" in \code{Flag}.}
+\code{AmbSampConc} value expressed as a percent. If this percentage
+was greater than 20\%, all samples collected on the same day were flagged as
+having a Blank Detection ("BD") in \code{Flag}.}
 \item{Flag}{Flag for the sample. "BD" indicates that there was a detection in
-    the blank sample.}
+the blank sample. See \link[=qual_codes_flags]{Qual Codes and Flags} for more
+information.}
 }
 }
 \usage{
@@ -39,10 +43,10 @@ qa_field_blanks
 }
 \description{
 Contains all field and filter blank data collected for the Yolo
-    Bypass Mass Balance Study. Field and filter blanks were collected each
-    day water samples were collected to test for possible contamination from
-    sampling techniques, sample bottles, or filtering equipment. These blanks
-    were separated from the raw data files in the "Compile_and_Clean_Conc_Data.R"
-    script file.
+Bypass Mass Balance Study. Field and filter blanks were collected each
+day water samples were collected to test for possible contamination from
+sampling techniques, sample bottles, or filtering equipment. These blanks
+were separated from the raw data files in the \href{https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R}{YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R}
+script file.
 }
 \keyword{datasets}

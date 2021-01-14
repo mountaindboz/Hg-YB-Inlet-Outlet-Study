@@ -5,48 +5,52 @@
 \alias{qa_field_dups}
 \title{Field Duplicates Collected in Association with \code{conc_data}}
 \format{
-data frame with 460 rows and 19 columns
+data frame with 460 rows and 20 columns
 \describe{
 \item{SampleCode_PS}{The unique identifier for the associated parent sample
-    produced by Bryte Lab}
+produced by Bryte Lab}
 \item{SampleCode_FD}{The unique identifier for the field duplicate sample
-    produced by Bryte Lab}
+produced by Bryte Lab}
 \item{StationName}{The name of the station where the field duplicate was
-    collected}
+collected}
 \item{SampleDate}{The collection date of the field duplicate and parent
-    samples}
+samples}
 \item{CollectionTime_PS}{The collection time of the associated parent
-    sample in PST}
+sample in PST}
 \item{CollectionTime_FD}{The collection time of the field duplicate
-    sample in PST}
+sample in PST}
 \item{Analyte}{The analytical parameter measured}
-\item{Result_PS}{The analytical result of the associated parent sample}
-\item{Result_FD}{The analytical result of the field duplicate sample}
+\item{Result_PS}{The analytical result of the associated parent sample. "< RL"
+or "< MDL" indicates that the result was less than the Reporting Limit or
+Method Detection Limit, respectively.}
+\item{Result_FD}{The analytical result of the field duplicate sample. "< RL"
+or "< MDL" indicates that the result was less than the Reporting Limit or
+Method Detection Limit, respectively.}
+\item{ResultQual_PS}{Result qualifier for the associated parent sample. See
+\link[=qual_codes_flags]{Qual Codes and Flags} for more information.}
+\item{ResultQual_FD}{Result qualifier for the field duplicate sample. See
+\link[=qual_codes_flags]{Qual Codes and Flags} for more information.}
 \item{RPD}{The relative percent difference between the field duplicate sample
-    and the associated parent sample. This was calculated as the absolute
-    difference between the two values divided by their average and expressed as
-    a percent. RPD's greater than their Measurement Quality Objectives were
-    flagged as "FV" in \code{Flag}. This only applied to duplicate pairs
-    where at least one value was greater than ten times the Reporting Limit.}
-\item{ResQual}{A numeric variable that represents whether either of the results
-    were below the detection limit (RL or MDL). A value of "0" indicates that
-    the results of both samples were detected, a value of "1" indicates that
-    both samples were below the detection limit, and a value of "0.5" indicates
-    that either the field duplicate or parent sample was below the detection
-    limit.}
+and the associated parent sample. This was calculated as the absolute
+difference between the two values divided by their average and expressed as
+a percent. RPD's greater than their Measurement Quality Objectives were
+flagged as having Field Variability ("FV") in \code{Flag}. This only applied to
+duplicate pairs where at least one value was greater than ten times the
+Reporting Limit or Method Detection Limit (for parameters with MDL's provided).}
 \item{RL}{The analytical reporting limit of the sample}
 \item{MDL}{The analytical method detection limit of the sample}
 \item{Units}{The units of the result}
 \item{LabComments_PS}{Comments provided by the analytical laboratory for the
-    associated parent sample}
+associated parent sample}
 \item{LabComments_FD}{Comments provided by the analytical laboratory for the
-    field duplicate sample}
-\item{MME_Comments_PS}{Comments provided by staff from the Mercury Monitoring and
-    Evaluation section for the associated parent sample}
-\item{MME_Comments_FD}{Comments provided by staff from the Mercury Monitoring and
-    Evaluation section for the field duplicate sample}
+field duplicate sample}
+\item{MME_Comments_PS}{Comments provided by staff from the DWR Mercury Monitoring and
+Evaluation section for the associated parent sample}
+\item{MME_Comments_FD}{Comments provided by staff from the DWR Mercury Monitoring and
+Evaluation section for the field duplicate sample}
 \item{Flag}{Flag for the sample pair. "FV" indicates that the pair has a RPD value
-    greater than its acceptable limit.}
+greater than its acceptable limit. See \link[=qual_codes_flags]{Qual Codes and Flags}
+for more information.}
 }
 }
 \usage{
@@ -54,9 +58,10 @@ qa_field_dups
 }
 \description{
 Contains all field duplicate data collected for the Yolo Bypass
-    Mass Balance Study. Field duplicates were collected each day water samples
-    were collected to test for sample reproducibility and field variability.
-    The duplicates and their associated parent samples were separated from
-    the raw data files in the "Compile_and_Clean_Conc_Data.R" script file.
+Mass Balance Study. Field duplicates were collected each day water samples
+were collected to test for sample reproducibility and field variability.
+The duplicates and their associated parent samples were separated from
+the raw data files in the \href{https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R}{YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R}
+script file.
 }
 \keyword{datasets}

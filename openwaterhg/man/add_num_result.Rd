@@ -15,12 +15,12 @@ must be "numeric" class.}
 }
 \value{
 A new variable named \code{Conc}, which is a clone of the
-    \code{Result} variable converted to "numeric" class.
+\code{Result} variable converted to "numeric" class.
 }
 \description{
 Creates a new variable named \code{Conc}, which is a clone
-    of the \code{Result} variable converted to "numeric" class. This
-    function substitutes the Method Detection Limit (MDL) or Reporting
-    Limit (RL) for the non-detect values contained in the \code{Result}
-    variable.
+of the \code{Result} variable converted to "numeric" class. This
+function substitutes the Method Detection Limit (MDL) or Reporting
+Limit (RL) for the non-detect values contained in the \code{Result}
+variable.
 }

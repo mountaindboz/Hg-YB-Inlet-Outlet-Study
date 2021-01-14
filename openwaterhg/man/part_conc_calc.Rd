@@ -20,10 +20,10 @@ part_conc_calc
 }
 \description{
 Contains calculated particulate concentration data for mercury,
-    methylmercury, and organic carbon for the Yolo Bypass Mass Balance Study.
-    Particulate concentrations were calculated as the difference between the
-    unfiltered and filtered concentrations. The calculations for this dataset
-    are in the "YB_Mass_Balance/Concentrations/Calculate_Particulate_Fractions.R"
-    script file.
+methylmercury, and organic carbon for the Yolo Bypass Mass Balance Study.
+Particulate concentrations were calculated as the difference between the
+unfiltered and filtered concentrations. The calculations for this dataset
+are in the \href{https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Calculate_Particulate_Fractions.R}{YB_Mass_Balance/Concentrations/Calculate_Particulate_Fractions.R}
+script file.
 }
 \keyword{datasets}

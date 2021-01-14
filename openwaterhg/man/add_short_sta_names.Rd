@@ -8,9 +8,9 @@ add_short_sta_names(df)
 }
 \arguments{
 \item{df}{The dataframe to add the \code{ShortName} variable to. Dataframe
-    must have a character variable named \code{StationName}. Each
-    observation under the \code{StationName} variable must have one of the
-    following values:
+must have a character variable named \code{StationName}. Each
+observation under the \code{StationName} variable must have one of the
+following values:
 \itemize{
 \item Cache Slough near Ryer Island
 \item CCSB- Low Flow Channel
@@ -34,10 +34,10 @@ add_short_sta_names(df)
 }
 \value{
 A new character variable named \code{ShortName}, which contains
-    shortened station names of the \code{StationName} variable.
+shortened station names of the \code{StationName} variable.
 }
 \description{
 Creates a new variable named \code{ShortName}, which contains
-    shortened station names of the \code{StationName} variable. These
-    short station names will be used in plots of the data.
+shortened station names of the \code{StationName} variable. These
+short station names will be used in plots of the data.
 }

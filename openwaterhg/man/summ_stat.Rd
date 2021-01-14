@@ -19,8 +19,8 @@ data to summarize. Must be "numeric" class.}
 }
 \value{
 A dataframe with the following summary statistics for either
-    one (\code{group_var1}) or two (\code{group_var1} and
-    \code{group_var2}) grouping variables:
+one (\code{group_var1}) or two (\code{group_var1} and
+\code{group_var2}) grouping variables:
 \itemize{
 \item "N" - Sample Size
 \item "Mean" - Average Value
@@ -35,5 +35,5 @@ A dataframe with the following summary statistics for either
 }
 \description{
 Calculates descriptive summary statistics for one or two
-    grouping variables.
+grouping variables.
 }

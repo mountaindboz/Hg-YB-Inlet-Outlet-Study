@@ -15,7 +15,7 @@ A ggplot layer that applies a custom theme as described above.
 }
 \description{
 This custom theme is the standardized theme used in plots
-    within the final report for the Open Water Mercury studies. It builds
-    off of the \code{theme_light()} ggplot theme and changes the facet
-    label text color to black.
+within the final report for the Open Water Mercury studies. It builds
+off of the \code{theme_light()} ggplot theme and changes the facet
+label text color to black.
 }

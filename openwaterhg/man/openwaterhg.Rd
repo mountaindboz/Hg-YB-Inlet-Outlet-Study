@@ -4,11 +4,11 @@
 \name{openwaterhg}
 \alias{openwaterhg}
 \alias{openwaterhg-package}
-\title{Analysis Tools For DWR's Open Water Mercury Studies}
+\title{Analysis Tools and Data For DWR's Open Water Mercury Studies}
 \description{
-A collection of R functions used for data analysis and visualizations
-    of DWR's Open Water Mercury Studies. These studies include the
-    Yolo Bypass Mass Balance Study and three Vegetation Senescence studies.
+A collection of commonly-used functions and datasets that were used for data analysis
+and visualizations of DWR's Open Water Mercury Studies. These studies include the
+Yolo Bypass Mass Balance Study and three Vegetation Senescence studies.
 }
 \author{
 \strong{Maintainer}: Dave Bosworth \email{David.Bosworth@water.ca.gov} (\href{https://orcid.org/0000-0003-0740-3390}{ORCID})

@@ -15,14 +15,14 @@ legend of the color palette. Default is \code{NULL}.}
 }
 \value{
 A ggplot object with the custom color palette for the inlets applied
-    to it.
+to it.
 }
 \description{
 Applies a custom color palette for the five inlet stations
-    to be used in figures in the final report for the Open Water Mercury
-    studies. The palette is based on the Viridis palette. Function is to
-    be used on ggplot objects. Each observation under the inlet grouping
-    variable used in the ggplot must have one of the following values:
+to be used in figures in the final report for the Open Water Mercury
+studies. The palette is based on the Viridis palette. Function is to
+be used on ggplot objects. Each observation under the inlet grouping
+variable used in the ggplot must have one of the following values:
 \itemize{
 \item KLRC
 \item CCSB
