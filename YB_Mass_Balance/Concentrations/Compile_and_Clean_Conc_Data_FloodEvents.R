@@ -28,7 +28,7 @@ pnnl_files <- pnnl_files[!str_detect(pnnl_files, "QA_Samples")]
 # Combine all of the data
 mlml_data_orig <- map_dfr(mlml_files, read_excel)
 pnnl_data_orig <- map_dfr(pnnl_files, read_excel)
-  
+ 
 # Clean up the datasets
   # MLML
   mlml_data_clean <- mlml_data_orig %>%
@@ -83,11 +83,15 @@ contract_data <- bind_rows(mlml_data_clean, pnnl_data_clean, mlml2)
         AnalyteName == "Managnese"                                                    ~ "Manganese- filtered"
       )
     ) %>% 
-    # Convert Result variable to character data type
+    # Create a new variable ResultQual to indicate <MDL, DNQ, and Detect values
     mutate(
-      Result = if_else(ResQualCode == "ND", "< MDL", as.character(Result)),
-      # Create a new variable ResQual where ND = 1 and Detect = 0
-      ResQual = if_else(ResQualCode == "ND", 1, 0)
+      ResultQual = case_when(
+        ResQualCode == "ND" ~  "< MDL",
+        Result > MDL & Result < RL ~ "DNQ",
+        TRUE ~ "Detect"
+      ),
+      # Convert values less than MDL as equal to their MDL
+      Result = if_else(ResultQual == "< MDL", MDL, Result)
     ) %>% 
     # Clean up date and time formatting
     mutate(
@@ -108,7 +112,7 @@ contract_data <- bind_rows(mlml_data_clean, pnnl_data_clean, mlml2)
       Analyte,
       UnitName,
       Result,
-      ResQual,
+      ResultQual,
       MDL,
       RL,
       LabResultComments
@@ -220,36 +224,35 @@ bryte_data_tFe_orig <- read_excel(path = "M:/Data/Lab/Bryte_Lab/Open_Water/YB_In
         TRUE                                    ~ StationNameStd
       )
     ) %>%
+    # Clean up Result variable
+    mutate(
+      # Create a new variable ResultQual to indicate <RL and Detect values
+      ResultQual = if_else(str_detect(Result, "^<"), "< RL", "Detect"),
+      # Convert Result variable to numeric and convert values less than RL as equal to their RL
+      Result = if_else(str_detect(Result, "^<"), RptLimit, as.numeric(Result)),
+      # Round Result variable to specified number of digits in n_round
+      Result = round(Result, n_round)
+    ) %>% 
     # Keep necessary variables
     select(
-      StationNameStd,
       SampleCode,
+      StationNameStd,
       SampleDate,
       CollectionTime,
       AnalyteStd,
       Result,
+      ResultQual,
       RptLimit,
       Units,
       Method,
       ParentSample,
       n_round
-    ) %>%
+    ) %>% 
     # Rename some variables (New Name = Old Name)
     rename(
       StationName = StationNameStd,
       Analyte = AnalyteStd,
       RL = RptLimit
-    ) %>% 
-    # Clean up Result variable
-    mutate(
-      # Create a new variable ResQual where ND = 1 and Detect = 0
-      ResQual = if_else(str_detect(Result, "^<"), 1, 0),
-      # Convert Result variable to numeric
-      Result = if_else(ResQual == 1, RL, as.numeric(Result)),
-      # Round Result variable to specified number of digits in n_round
-      Result = round(Result, n_round),
-      # Convert Result variable back to character
-      Result = if_else(ResQual == 1, "< RL", as.character(Result))
     )
     
 # Clean up 
@@ -260,15 +263,7 @@ rm(list= ls()[!(ls() %in% df_keep)])
 # 3.0 All Data ----------------------------------------------------------------
 
 # Combine Contract and Bryte Lab Data
-all_data <- bind_rows(contract_data_clean, bryte_data_clean) %>% 
-  # Create a new variable Conc, which is a numeric version of Result with the MDL and RL for the ND values
-  mutate(
-    Conc = case_when(
-      Result == "< RL"  ~ RL,
-      Result == "< MDL" ~ MDL,
-      TRUE              ~ as.numeric(Result)
-    )
-  )
+all_data <- bind_rows(contract_data_clean, bryte_data_clean)
 
 
 # 4.0 Lab Replicates ----------------------------------------------------------
@@ -281,101 +276,110 @@ lab_reps <- all_data %>%
   
 # Pull out a df of all Lab Replicates only including variables that are unique in Rep1 and Rep2
 lab_reps_u <- inner_join(all_data, lab_reps) %>% 
-  select(SampleCode, Analyte, Result, Conc)
+  select(SampleCode, Analyte, Result, ResultQual)
 
 # Pull out a df of all Lab Replicates only including variables that are identical in Rep1 and Rep2
 lab_reps_i <- inner_join(all_data, lab_reps) %>% 
-  select(-c(Result, LabComments, Conc)) %>% 
-  # Average ResQual variable for each Replicate group
-  group_by(SampleCode, Analyte) %>% 
-  mutate(ResQual = mean(ResQual)) %>% 
-  ungroup() %>% 
+  select(-c(Result, ResultQual, LabComments)) %>% 
   # Remove duplicate rows
   distinct()
-  
+
 # Pull out a df of all data not including Lab Replicates
 no_lab_reps <- anti_join(all_data, lab_reps)
 
 # Create two different df to spread out unique variables
   # Result
   S_Result <- lab_reps_u %>% 
-    select(-Conc) %>%
+    select(-ResultQual) %>%
     group_by(SampleCode, Analyte) %>% 
     mutate(Rep = paste0("Result", row_number())) %>% 
     ungroup() %>% 
     pivot_wider(names_from = Rep, values_from = Result)
     
-  # Conc
-  S_Conc <- lab_reps_u %>% 
+  # ResultQual
+  S_ResultQual <- lab_reps_u %>% 
     select(-Result) %>%
     group_by(SampleCode, Analyte) %>% 
-    mutate(Rep = paste0("Conc", row_number())) %>% 
+    mutate(Rep = paste0("ResultQual", row_number())) %>% 
     ungroup() %>% 
-    pivot_wider(names_from = Rep, values_from = Conc)
+    pivot_wider(names_from = Rep, values_from = ResultQual)
   
 # Join all of the df back together
-lab_rep_data <-
-  reduce(list(S_Conc, S_Result, lab_reps_i), left_join) %>% 
-  # Calculate RPD values for each replicate pair and flag if necessary
+lab_rep_data <- reduce(list(S_Result, S_ResultQual, lab_reps_i), left_join)
+
+# Modify the lab_rep_data df to be exported
+lab_rep_data_exp <- lab_rep_data %>% 
   mutate(
-    RPD = round(abs(Conc1 - Conc2)/((Conc1 + Conc2)/2), 3),
+    # Calculate RPD values for each replicate pair and flag if necessary
+    RPD = if_else(
+      str_detect(ResultQual1, "^<") | str_detect(ResultQual2, "^<"),
+      NA_real_,
+      round(abs(Result1 - Result2)/((Result1 + Result2)/2), 3)
+    ),
     Flag = case_when(
-      Analyte %in% contract_ana & RPD > 0.25 & (Conc1 > 10 * MDL | Conc2 > 10 * MDL) ~ "y",
-      !Analyte %in% contract_ana & RPD > 0.25 & (Conc1 > 10 * RL | Conc2 > 10 * RL) ~ "y",
+      Analyte %in% contract_ana & RPD > 0.25 & (Result1 > 10 * MDL | Result2 > 10 * MDL) ~ "RPD",
+      !Analyte %in% contract_ana & RPD > 0.25 & (Result1 > 10 * RL | Result2 > 10 * RL) ~ "RPD",
       TRUE ~ NA_character_
+    ),
+    # Convert Result variables to character indicating <MDL and <RL values as such
+    Result1 = case_when(
+      ResultQual1 == "< RL" ~ "< RL",
+      ResultQual1 == "< MDL" ~ "< MDL",
+      TRUE ~ as.character(Result1)
+    ),
+    Result2 = case_when(
+      ResultQual2 == "< RL" ~ "< RL",
+      ResultQual2 == "< MDL" ~ "< MDL",
+      TRUE ~ as.character(Result2)
     )
+  ) %>% 
+  # Only keep "DNQ" in ResultQual variables
+  mutate(across(starts_with("ResultQual"), ~if_else(.x == "DNQ", "DNQ", NA_character_))) %>% 
+  # Select variables to keep for export
+  select(
+    SampleCode,
+    StationName,
+    SampleDate,
+    CollectionTime,
+    Analyte,
+    LabBatch,
+    Result1,
+    Result2,
+    ResultQual1,
+    ResultQual2,
+    RPD,
+    RL,
+    MDL,
+    Units,
+    MME_Comments,
+    Flag
   )
 
-# Export lab_rep_data to .csv file- only needed once
-# lab_rep_data %>%
-#   select(
-#     SampleCode,
-#     StationName,
-#     SampleDate,
-#     CollectionTime,
-#     Analyte,
-#     LabBatch,
-#     Result1,
-#     Result2,
-#     RPD,
-#     ResQual,
-#     RL,
-#     MDL,
-#     Units,
-#     MME_Comments,
-#     Flag
-#   ) %>%
-#   write_excel_csv("LabReplicates.csv", na = "")
+# Export lab_rep_data_exp to .csv file
+lab_rep_data_exp %>% write_excel_csv("LabReplicates.csv", na = "")
+# This file was added to the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/LabReplicates.csv
+# This data is also in the "Lab Replicates" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
+# spreadsheet in the same location on the SharePoint site
+# Redundant files are in M:\Data\Inlet-Outlet_Final
 
-# Modify the lab_rep_data df
+# Modify the lab_rep_data df to be added back to no lab reps
 lab_rep_data_mod <- lab_rep_data %>% 
   mutate(
     # Average Concentration values
-    Conc = (Conc1 + Conc2)/2,
-    # Add Result variable back to df
-    Result = case_when(
-      ResQual == 1 & Analyte %in% contract_ana ~ "< MDL",
-      ResQual == 1 & !Analyte %in% contract_ana ~ "< RL",
-      TRUE ~ as.character(Conc)
-    ),
+    Result = (Result1 + Result2)/2,
+    # Consolidate ResultQual variables (all replicates have the same Qual code)
+    ResultQual = ResultQual1,
     # Add comment about using the average of lab replicates
-    MME_Comments = if_else(
-      is.na(MME_Comments),
-      "Average of Lab Replicates",
-      paste("Average of Lab Replicates", MME_Comments, sep = "; ")
+    MME_Comments = case_when(
+      is.na(MME_Comments) & ResultQual != "< RL" ~ "Average of Lab Replicates",
+      is.na(MME_Comments) & ResultQual == "< RL" ~ "Both Lab Replicates are < RL",
+      TRUE ~ paste("Average of Lab Replicates", MME_Comments, sep = "; ")
     )
   ) %>% 
   # Delete a few variables
-  select(
-    -c(
-      Conc1, 
-      Conc2,
-      Result1, 
-      Result2,
-      rpd,
-      Flag
-    )
-  )
+  select(!ends_with(c("1", "2")))
   
 # Bind the lab_rep_data_mod df back with the no_lab_reps df
 all_data1 <- bind_rows(no_lab_reps, lab_rep_data_mod)
@@ -387,50 +391,59 @@ rm(list= ls()[!(ls() %in% df_keep)])
 
 # 5.0 Blanks and QA Information -----------------------------------------------
 
-# Create a .csv file that summarizes the Lab Methods used for each analyte- only needed once
-# all_data1 %>%
-#   count(Analyte, Method) %>%
-#   select(-n) %>%
-#   write_excel_csv("AnalyteMethods.csv", na = "")
+# Create a .csv file that summarizes the Lab Methods used for each analyte
+all_data1 %>%
+  count(Analyte, Method) %>%
+  select(-n) %>%
+  write_excel_csv("AnalyteMethods.csv", na = "")
+# This data was added to the "YB_Inlet-Outlet_Conc_QA_Data.xlsx" spreadsheet in the 
+# "Lab Methods" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Conc_QA_Data.xlsx
+# A redundant file is in M:\Data\Inlet-Outlet_Final
   
-# Export a .csv file for Lab QA batches- only needed once
-# all_data1 %>%
-#   select(LabBatch, SampleCode, Analyte) %>%
-#   write_excel_csv("Lab_QA_Batch.csv", na = "")
+# Export a .csv file for Lab QA batches
+all_data1 %>%
+  select(LabBatch, SampleCode, Analyte) %>%
+  write_excel_csv("Lab_QA_Batch.csv", na = "")
+# This data was added to the "YB_Inlet-Outlet_Conc_QA_Data.xlsx" spreadsheet in the 
+# "Lab QA Batches" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Conc_QA_Data.xlsx
+# A redundant file is in M:\Data\Inlet-Outlet_Final
 
-# Export a .csv file for Analysis dates for Lab QA batches- only needed once
-# all_data1 %>%
-#   select(LabBatch, AnalysisDate) %>%
-#   distinct() %>%
-#   # removing Lab Batch: MPSL-DFG_20160427_W_MeHg with AnalysisDate of 4/28/2016, since all
-#   # but one sample in this batch were analyzed on 4/27/2016
-#   filter(!(LabBatch == "MPSL-DFG_20160427_W_MeHg" & AnalysisDate == "2016-04-28")) %>%
-#   write_excel_csv("Lab_QA_Batch_AnaDate.csv", na = "")
+# Export a .csv file for Analysis dates for Lab QA batches
+all_data1 %>%
+  select(LabBatch, AnalysisDate) %>%
+  distinct() %>%
+  # removing Lab Batch: MPSL-DFG_20160427_W_MeHg with AnalysisDate of 4/28/2016, since all
+  # but one sample in this batch were analyzed on 4/27/2016
+  filter(!(LabBatch == "MPSL-DFG_20160427_W_MeHg" & AnalysisDate == "2016-04-28")) %>%
+  write_excel_csv("Lab_QA_Batch_AnaDate.csv", na = "")
+# This data was added to the "YB_Inlet-Outlet_Conc_QA_Data.xlsx" spreadsheet in the 
+# "Analysis Dates" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Conc_QA_Data.xlsx
+# A redundant file is in M:\Data\Inlet-Outlet_Final
 
 # Remove a few QA related variables
-all_data1 <- all_data1 %>% 
-  select(-c(LabBatch, AnalysisDate, Method))
-  
+all_data1 <- all_data1 %>% select(-c(LabBatch, AnalysisDate, Method))
+
 # Pull out Blank Samples and save for QA validation
 blank_samples <- all_data1 %>% 
   filter(str_detect(StationName, "Blank$")) %>% 
-  # Round Conc variable and update Result variable with rounded values
+  # Round Result variable
   mutate(
-    Conc = case_when(
-      str_detect(Analyte, "^Boron|^MeHg") ~ round(Conc, 3),
-      Analyte %in% c("Iron- filtered", "Manganese- filtered") ~ signif(Conc, 3),
-      TRUE ~ round(Conc, n_round)
-    ),
     Result = case_when(
-      ResQual == 1 & Analyte %in% contract_ana ~ "< MDL",
-      ResQual == 1 & !Analyte %in% contract_ana ~ "< RL",
-      TRUE ~ as.character(Conc)
+      str_detect(Analyte, "^Boron|^MeHg") ~ round(Result, 3),
+      Analyte %in% c("Iron- filtered", "Manganese- filtered") ~ signif(Result, 3),
+      TRUE ~ round(Result, n_round)
     )
   ) %>% 
-  select(-c(ResQual, ParentSample:Conc))
+  select(-c(ParentSample, n_round))
 
-# Remove Blank samples from all_data df
-all_data2 <- anti_join(all_data1, blank_samples, by = c("SampleCode", "Analyte"))
+# Remove Blank samples from all_data1 df
+all_data2 <- all_data1 %>% filter(!str_detect(StationName, "Blank$"))
 
 
 # 6.0 Field Duplicates --------------------------------------------------------
@@ -459,111 +472,105 @@ field_dup_pairs <- inner_join(no_field_dups, fd_station_dates)
 # Remove field_dup_pairs from no_field_dups df
 no_field_dups <- anti_join(no_field_dups, field_dup_pairs, by = c("StationName", "SampleDate"))
   
-# Bind field_dups and field_dup_pairs together
-field_dups_all <- bind_rows(field_dups, field_dup_pairs)
-  
 # Clean up
-rm(parent_samples, fd_station_dates, field_dups, field_dup_pairs)
-  
-# Separate field dups from parent samples, then join together using suffixes
-field_dups_fd <- field_dups_all %>% 
-  filter(StationName == "Field Duplicate Sample")
+rm(parent_samples, fd_station_dates)
 
-field_dups_ps <- field_dups_all %>% 
-  filter(StationName != "Field Duplicate Sample")
-    
+# Join parent samples and field dups together using suffixes
 field_dups_all <- 
   left_join(
-    field_dups_ps,
-    field_dups_fd,
+    field_dup_pairs,
+    field_dups,
     by = c("SampleDate", "Analyte"),
     suffix = c("_PS", "_FD")
   ) %>% 
-  select(
-    SampleCode_PS,
-    SampleCode_FD,
-    StationName_PS,
-    SampleDate,
-    CollectionTime_PS,
-    CollectionTime_FD,
-    Analyte,
-    Result_PS,
-    Result_FD,
-    Conc_PS,
-    Conc_FD,
-    ResQual_PS,
-    ResQual_FD,
-    RL_PS,
-    MDL_PS,
-    Units_PS,
-    LabComments_PS,
-    LabComments_FD,
-    MME_Comments_PS,
-    MME_Comments_FD,
-    n_round_PS
+  # Calculate RPD values for each replicate pair and flag if necessary
+  mutate(
+    RPD = if_else(
+      str_detect(ResultQual_PS, "^<") | str_detect(ResultQual_FD, "^<"),
+      NA_real_,
+      round(abs(Result_PS - Result_FD)/((Result_PS + Result_FD)/2), 3)
+    ),
+    Flag = case_when(
+      Analyte %in% contract_ana & RPD > 0.25 & (Result_PS > 10 * MDL_PS | Result_FD > 10 * MDL_FD) ~ "FV",
+      (!Analyte %in% contract_ana & !Analyte %in% c("DOC", "TOC", "VSS")) & RPD > 0.25 & (Result_PS > 10 * RL_PS | Result_FD > 10 * RL_FD) ~ "FV",
+      Analyte %in% c("DOC", "TOC", "VSS") & RPD > 0.3 & (Result_PS > 10 * RL_PS | Result_FD > 10 * RL_FD) ~ "FV",
+      TRUE ~ NA_character_
+    )
   ) %>% 
-  rename(
+  # Select variables to keep and rename a few
+  select(
+    starts_with("SampleCode"),
     StationName = StationName_PS,
+    SampleDate,
+    starts_with("CollectionTime"),
+    Analyte,
+    starts_with("Result_"),
+    starts_with("ResultQual"),
+    RPD,
     RL = RL_PS,
     MDL = MDL_PS,
     Units = Units_PS,
+    starts_with("LabComments"),
+    starts_with("MME_Comments"),
+    Flag,
     n_round = n_round_PS
   )
 
-# Clean up 
-rm(field_dups_fd, field_dups_ps)
-
-# Modify field dup df
-field_dup_data <- field_dups_all %>% 
-  # Calculate RPD values for each replicate pair and flag if necessary
+# Modify field dup df to be exported
+field_dups_all_exp <- field_dups_all %>% 
+  # Convert Result variables to character indicating <MDL and <RL values as such
   mutate(
-    RPD = round(abs(Conc_PS - Conc_FD)/((Conc_PS + Conc_FD)/2), 3),
-    Flag = case_when(
-      Analyte %in% contract_ana & RPD > 0.25 & (Conc_PS > 10 * MDL | Conc_FD > 10 * MDL) ~ "FV",
-      (!Analyte %in% contract_ana & !Analyte %in% c("DOC", "TOC", "VSS")) & RPD > 0.25 & (Conc_PS > 10 * RL | Conc_FD > 10 * RL) ~ "FV",
-      Analyte %in% c("DOC", "TOC", "VSS") & RPD > 0.3 & (Conc_PS > 10 * RL | Conc_FD > 10 * RL) ~ "FV",
-      TRUE ~ "n"
+    Result_PS = case_when(
+      ResultQual_PS == "< RL" ~ "< RL",
+      ResultQual_PS == "< MDL" ~ "< MDL",
+      TRUE ~ as.character(Result_PS)
     ),
-    # Average ResQual values
-    ResQual = (ResQual_PS + ResQual_FD)/2,
-    # Add one comment regarding using the MDL value to calculate the RPD of one of the duplicate pairs
-    MME_Comments_PS = if_else(
-      ResQual == 0.5, 
-      "Used the MDL value to calculate RPD of the Duplicates",
-      MME_Comments_PS
+    Result_FD = case_when(
+      ResultQual_FD == "< RL" ~ "< RL",
+      ResultQual_FD == "< MDL" ~ "< MDL",
+      TRUE ~ as.character(Result_FD)
     )
   ) %>% 
-  select(-c(ResQual_PS, ResQual_FD))
+  # Only keep "DNQ" in ResultQual variables
+  mutate(across(starts_with("ResultQual"), ~if_else(.x == "DNQ", "DNQ", NA_character_))) %>% 
+  # Remove n_round variable for export
+  select(-n_round)
 
-# Export field_dup_data to .csv file- added to Final data spreadsheet, and kept as a separate
-# .csv file to be added as a dataset to the openwaterhg package
-field_dup_data %>%
-  select(
-    SampleCode_PS:Result_FD,
-    RPD,
-    ResQual,
-    RL:MME_Comments_FD,
-    Flag
-  ) %>%
-  write_excel_csv("FieldDuplicates.csv", na = "")  # moved to SharePoint site
+# Export field_dups_all_exp to .csv file
+field_dups_all_exp %>%  write_excel_csv("FieldDuplicates.csv", na = "")
+# This file was added to the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/FieldDuplicates.csv
+# This data is also in the "Field Duplicates" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
+# spreadsheet in the same location on the SharePoint site
+# Redundant files are in M:\Data\Inlet-Outlet_Final
+# This data was also added to the openwaterhg package as qa_field_dups
   
-# Modify the field_dup_data df
-field_dup_data_mod <- field_dup_data %>% 
+# Modify the field_dups_all df to be added back to no field dups
+field_dups_all_mod <- field_dups_all %>% 
   # Average Concentration values
   mutate(
-    Conc = (Conc_PS + Conc_FD)/2,
+    Result = (Result_PS + Result_FD)/2,
     # Add comment about using the average of field duplicates
     MME_Comments = case_when(
-      ResQual == 1 ~ "Average of Field Duplicates, both values were < MDL",
+      ResultQual_PS == "< MDL" &  ResultQual_FD == "< MDL" ~ "Both Field Duplicates are < MDL",
+      ResultQual_PS == "< MDL" &  ResultQual_FD == "Detect" ~ "Average of Field Duplicates, used the MDL value for the Parent Sample",
       is.na(MME_Comments_PS) & is.na(MME_Comments_FD) ~ "Average of Field Duplicates",
-      ResQual == 0.5 ~ "Average of Field Duplicates, used the MDL value for the Parent Sample",
-      ResQual == 0 & (!is.na(MME_Comments_PS) | !is.na(MME_Comments_FD)) ~ "Average of Field Duplicates and Lab Replicates"
+      (!is.na(MME_Comments_PS) | !is.na(MME_Comments_FD)) & str_detect(MME_Comments_FD, "Field") ~ "Average of Field Duplicates and Lab Replicates; Field Duplicate originally labeled as Field Blank on data sheet, most likely an ambient sample after looking at data from sampling event",
+      TRUE ~ "Average of Field Duplicates and Lab Replicates"
     ),
     # Consolidate Lab Comments
     LabComments = case_when(
       !is.na(LabComments_PS) & !is.na(LabComments_FD) ~ paste0("Parent Sample: ", LabComments_PS, "; Field Dup: ", LabComments_FD),
       !is.na(LabComments_PS) & is.na(LabComments_FD) ~ paste0("Parent Sample: ", LabComments_PS),
       is.na(LabComments_PS) & !is.na(LabComments_FD) ~ paste0("Field Dup: ", LabComments_FD)
+    ),
+    # Consolidate ResultQual variables
+    ResultQual = case_when(
+      ResultQual_PS == "DNQ" & ResultQual_FD == "DNQ" ~ "DNQ (both Field Duplicate pairs)",
+      ResultQual_PS == "Detect" & ResultQual_FD == "DNQ" ~ "DNQ (Field Duplicate only)",
+      ResultQual_PS == "< MDL" & ResultQual_FD == "Detect" ~ "Detect",
+      TRUE ~ ResultQual_PS
     )
   ) %>% 
   # Rename some variables
@@ -572,35 +579,23 @@ field_dup_data_mod <- field_dup_data %>%
     CollectionTime = CollectionTime_PS
   ) %>% 
   # Delete a few variables
-  select(
-    -c(
-      ends_with("_PS"),
-      ends_with("_FD"),
-      RPD,
-      Flag
-    )
-  )
+  select(-c(ends_with(c("_PS", "_FD")), RPD, Flag))
 
-# Bind the field_dup_data_mod df back with the no_field_dups df
-all_data3 <- bind_rows(no_field_dups, field_dup_data_mod) %>% 
-  # Round Conc variable and update Result variable with rounded values
+# Bind the field_dups_all_mod df back with the no_field_dups df
+all_data3 <- bind_rows(no_field_dups, field_dups_all_mod) %>% 
+  # Round Result variable
   mutate(
-    Conc = case_when(
-      str_detect(Analyte, "^Boron|^MeHg") ~ round(Conc, 3),
-      Analyte %in% c("Iron- filtered", "Manganese- filtered") ~ signif(Conc, 3),
-      TRUE ~ round(Conc, n_round)
-    ),
     Result = case_when(
-      ResQual == 1 & Analyte %in% contract_ana ~ "< MDL",
-      ResQual == 1 & !Analyte %in% contract_ana ~ "< RL",
-      TRUE ~ as.character(Conc)
+      str_detect(Analyte, "^Boron|^MeHg") ~ round(Result, 3),
+      Analyte %in% c("Iron- filtered", "Manganese- filtered") ~ signif(Result, 3),
+      TRUE ~ round(Result, n_round)
     )
   ) %>% 
-  # remove Conc and n_round variables
-  select(-c(Conc, n_round))
+  # remove n_round variable since it is no longer necessary
+  select(-n_round)
 
 # Remove df that are no longer necessary
-df_keep <- append(df_keep, c("all_data2", "all_data3", "blank_samples", "field_dup_data"))
+df_keep <- append(df_keep, c("all_data2", "all_data3", "blank_samples", "field_dups_all"))
 rm(list= ls()[!(ls() %in% df_keep)])
 
 
@@ -632,67 +627,54 @@ comp_grab_pairs <- filter(comp_grab_pairs, !(SampleDate == "2017-02-01" & Analyt
 # Remove comp_grab_pairs from no_comp_grab df
 no_comp_grab <- anti_join(no_comp_grab, comp_grab_pairs, by = c("StationName", "SampleDate", "Analyte"))
 
-# Bind comp_grap and comp_grab_pairs together
-comp_grab_all <- bind_rows(comp_grab, comp_grab_pairs)
-
 # Clean up
-rm(cg_station_dates, comp_grab, comp_grab_pairs, parent_samples)
+rm(cg_station_dates, parent_samples)
 
-# Separate companion grabs from parent samples, then join together using suffixes
-comp_grab_cg <- comp_grab_all %>% 
-  filter(StationName == "Companion Grab Sample")
-
-comp_grab_ps <- comp_grab_all %>% 
-  filter(StationName != "Companion Grab Sample")
-
+# Join parent samples and companion grabs together using suffixes
 comp_grab_all <- 
   left_join(
-    comp_grab_ps,
-    comp_grab_cg,
+    comp_grab_pairs,
+    comp_grab,
     by = c("SampleDate", "Analyte"),
     suffix = c("_PS", "_CG")
   ) %>% 
+  # Select variables to keep and rename a few
   select(
-    SampleCode_PS,
-    SampleCode_CG,
-    StationName_PS,
-    SampleDate,
-    CollectionTime_PS,
-    CollectionTime_CG,
-    Analyte,
-    Result_PS,
-    Result_CG,
-    ResQual_PS,
-    ResQual_CG,
-    RL_PS,
-    MDL_PS,
-    Units_PS,
-    LabComments_PS,
-    LabComments_CG,
-    MME_Comments_PS,
-    MME_Comments_CG
-  ) %>% 
-  rename(
+    starts_with("SampleCode"),
     StationName = StationName_PS,
+    SampleDate,
+    starts_with("CollectionTime"),
+    Analyte,
+    starts_with("Result_"),
+    starts_with("ResultQual"),
     RL = RL_PS,
     MDL = MDL_PS,
-    Units = Units_PS
+    Units = Units_PS,
+    starts_with("LabComments"),
+    starts_with("MME_Comments")
   )
 
-# Clean up 
-rm(comp_grab_cg, comp_grab_ps)
+# Modify comp grab df to be exported
+comp_grab_all_exp <- comp_grab_all %>% 
+  # Add comments about some questionable companion grab data
+  mutate(
+    MME_Comments_CG = case_when(
+      SampleDate == "2017-04-26" & Analyte == "MeHg- filtered" ~ "Sample appears to be unfiltered",
+      SampleDate == "2017-04-26" & Analyte == "THg- total" ~ "Value appears to be biased low possibly because of inadequate mixing of the bulk sample",
+      TRUE ~ MME_Comments_CG
+    )
+  ) %>% 
+  # Only keep "DNQ" in ResultQual variables
+  mutate(across(starts_with("ResultQual"), ~if_else(.x == "DNQ", "DNQ", NA_character_)))
 
-# Export CompanionGrabData to .csv file- only needed once
-# comp_grab_all %>%
-#   # Add comment about some questionable companion grab data
-#   mutate(
-#     MME_Comments_CG = case_when(
-#       SampleDate == "2017-04-26" & Analyte == "MeHg- filtered" ~ "Sample appears to be unfiltered",
-#       SampleDate == "2017-04-26" & Analyte == "THg- total" ~ "Value appears to be biased low possibly because of inadequate mixing of the bulk sample",
-#       TRUE ~ MME_Comments_CG
-#     )
-#   ) %>%
-#   write_excel_csv("CompanionGrabSamples.csv", na = "")
+# Export comp_grab_all_exp to .csv file
+comp_grab_all_exp %>% write_excel_csv("CompanionGrabSamples.csv", na = "")
+# This file was added to the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/CompanionGrabSamples.csv
+# This data is also in the "Companion Grab Samples" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
+# spreadsheet in the same location on the SharePoint site
+# Redundant files are in M:\Data\Inlet-Outlet_Final
 
 # Decided to use Companion Grab samples to represent the actual values since they were 
 # collected by hand which is how all other samples were collected from the boat. The 
@@ -712,11 +694,10 @@ comp_grab_all_mod1 <- comp_grab_all %>%
       "This sample was entered as a Companion Grab Sample in FLIMS and was collected by hand",
       paste0("This sample was entered as a Companion Grab Sample in FLIMS and was collected by hand; ", MME_Comments_CG)
     )
-  )
+  ) %>% 
+  # Remove the _CG suffix from variable names
+  rename_with(~str_remove(.x, "_CG$"), ends_with("_CG"))
   
-# Rename a few variables of comp_grab_all_mod1
-names(comp_grab_all_mod1) <- str_replace_all(names(comp_grab_all_mod1), "_CG$", "")
-
 # Modify the comp_grab_all df keeping the normal samples for the 4/26/2017 event
 comp_grab_all_mod2 <- comp_grab_all %>% 
   filter(SampleDate == "2017-04-26") %>% 
@@ -725,11 +706,10 @@ comp_grab_all_mod2 <- comp_grab_all %>%
   # Add a comment explaining that the Normal samples were used since some of the CGS were questionable
   mutate(
     MME_Comments_PS = "This sample was entered as a normal sample in FLIMS and was collected with a bucket sampler; used these values for this station on this date since the some of the data for the CGS were questionable (the fMeHg sample appeared to be unfiltered and the tTHg value appeared to be biased low mabye due to inadequate mixing of the bulk sample)"
-  )
+  ) %>% 
+  # Remove the _PS suffix from variable names
+  rename_with(~str_remove(.x, "_PS$"), ends_with("_PS"))
 
-# Rename a few variables of comp_grab_all_mod2
-names(comp_grab_all_mod2) <- str_replace_all(names(comp_grab_all_mod2), "_PS$", "")
-  
 # Bind the comp_grab_all_mod1, comp_grab_all_mod2 and no_comp_grab df's
 all_data4 <- bind_rows(comp_grab_all_mod1, comp_grab_all_mod2, no_comp_grab) %>% 
   # Delete ParentSample variable
@@ -750,7 +730,7 @@ field_blanks_loc <- read_csv("YB_Mass_Balance/Concentrations/Field_Blank_collect
 # Find Field Blanks with detected values
 field_blanks_det <- blank_samples %>% 
   filter(
-    !str_detect(Result, "^<"),
+    !str_detect(ResultQual, "^<"),
     str_detect(StationName, "^Field")
   ) %>% 
   # Add StationNames where each Field Blank was collected
@@ -766,23 +746,20 @@ field_blanks_det <- all_data4 %>%
   ) %>% 
   # Calculate the Blank Conc:Ambient Conc ratio, and flag any that are greater than 0.2
   mutate(
-    Result_amb = as.numeric(Result_amb),
-    Result_qa = as.numeric(Result_qa),
-    blank_amb_ratio = round(Result_qa/Result_amb, 3),
-    Flag = if_else(blank_amb_ratio >= 0.2, "BD", "n")
+    Blank_Amb_ratio = round(Result_qa/Result_amb, 3),
+    Flag = if_else(Blank_Amb_ratio >= 0.2, "BD", NA_character_)
   ) %>% 
   # Clean up df
   select(-StationName) %>% 
   rename(
     StationName = StationName_qa,
     Result = Result_qa
-  ) %>% 
-  mutate(Result = as.character(Result))
+  )
 
 # Find Filter Blanks with detected values
 filter_blanks_det <- blank_samples %>% 
   filter(
-    !str_detect(Result, "^<"),
+    !str_detect(ResultQual, "^<"),
     str_detect(StationName, "^Filter")
   )
   
@@ -795,8 +772,6 @@ filter_blanks_det1 <- filter_blanks_det %>%
 # Pull out all ambient data associated with the detected filter blanks
 amb_samples <- all_data4 %>% 
   inner_join(filter_blanks_det1) %>% 
-  # Convert Result to numeric
-  mutate(Result = as.numeric(Result)) %>% 
   # Calculate average concentrations
   group_by(SampleDate, Analyte) %>% 
   summarize(Result_amb = mean(Result)) %>% 
@@ -817,23 +792,50 @@ filter_blanks_det <- filter_blanks_det %>%
   left_join(amb_samples, by = c("SampleDate_mod" = "SampleDate", "Analyte")) %>% 
   # Calculate the Blank Conc:Ambient Conc ratio, and flag any that are greater than 0.2
   mutate(
-    Result = as.numeric(Result),
-    blank_amb_ratio = round(Result/Result_amb, 3),
-    Flag = if_else(blank_amb_ratio >= 0.2, "BD", "n")
+    Blank_Amb_ratio = round(Result/Result_amb, 3),
+    Flag = if_else(Blank_Amb_ratio >= 0.2, "BD", NA_character_)
   ) %>% 
   # Clean up df
-  select(-SampleDate_mod) %>% 
-  mutate(Result = as.character(Result))
+  select(-SampleDate_mod)
 
 # Bind all blank sample data back together
 blank_samples <- blank_samples %>% 
-  filter(str_detect(Result, "^<")) %>% 
+  filter(str_detect(ResultQual, "^<")) %>% 
   bind_rows(field_blanks_det, filter_blanks_det) %>% 
-  select(SampleCode:Analyte, Result, RL, MDL, Units, LabComments:Flag)
+  # Convert Result variable to character indicating <MDL and <RL values as such
+  mutate(
+    Result = case_when(
+      ResultQual == "< RL" ~ "< RL",
+      ResultQual == "< MDL" ~ "< MDL",
+      TRUE ~ as.character(Result)
+    )
+  ) %>% 
+  # Only keep "DNQ" in ResultQual variables
+  mutate(across(starts_with("ResultQual"), ~if_else(.x == "DNQ", "DNQ", NA_character_))) %>%
+  # Select variables to keep for export
+  select(
+    SampleCode:Analyte,
+    Result,
+    ResultQual,
+    RL,
+    MDL,
+    Units,
+    LabComments,
+    MME_Comments,
+    AmbSampConc = Result_amb,
+    Blank_Amb_ratio,
+    Flag
+  )
 
-# Export blank_samples to .csv file- added to Final data spreadsheet, and kept as a separate
-# .csv file to be added as a dataset to the openwaterhg package
-blank_samples %>% write_excel_csv("BlankSamples.csv", na = "")  # moved to SharePoint site
+# Export blank_samples to .csv file
+blank_samples %>% write_excel_csv("BlankSamples.csv", na = "")
+# This file was added to the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/BlankSamples.csv
+# This data is also in the "Field and Filter Blanks" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
+# spreadsheet in the same location on the SharePoint site
+# Redundant files are in M:\Data\Inlet-Outlet_Final
+# This data was also added to the openwaterhg package as qa_field_blanks
 
 # Clean up
 rm(field_blanks_det, field_blanks_loc, filter_blanks_det, filter_blanks_det1, amb_samples)
@@ -852,7 +854,7 @@ all_data4_flag_bd <- all_data4 %>%
   mutate(QualCode = "J- BD")
 
 # Bind data back together
-all_data4 <- all_data4 %>% 
+all_data5 <- all_data4 %>% 
   anti_join(blank_samples_flag) %>% 
   bind_rows(all_data4_flag_bd)
 
@@ -863,12 +865,12 @@ rm(blank_samples_flag, all_data4_flag_bd)
 # 8.2 Qualify samples with high Field Variability -------------------------
 
 # Pull out Field Duplicates with "FV" flag
-field_dup_flag <- field_dup_data %>% 
+field_dup_flag <- field_dups_all %>% 
   filter(Flag == "FV") %>% 
   select(SampleDate, Analyte)
 
 # Pull out matching ambient samples and add comment to QualCode variable
-all_data4_flag_fv <- all_data4 %>% 
+all_data5_flag_fv <- all_data5 %>% 
   inner_join(field_dup_flag) %>% 
   mutate(
     QualCode = case_when(
@@ -879,27 +881,20 @@ all_data4_flag_fv <- all_data4 %>%
   )
 
 # Bind data back together
-all_data4 <- all_data4 %>% 
+all_data6 <- all_data5 %>% 
   anti_join(field_dup_flag) %>% 
-  bind_rows(all_data4_flag_fv)
+  bind_rows(all_data5_flag_fv)
 
 # Clean up
-rm(field_dup_flag, all_data4_flag_fv)
+rm(field_dup_flag, all_data5_flag_fv)
 
 
 # 8.3 Check for filtered values that are greater than the total values --------
 
 # Pull out all analytes with associated filtered and total measurements and find filtered
 # that are greater than the total values
-filt_g_total <- all_data4 %>% 
-  mutate(
-    Conc = case_when(
-      Result == "< RL"  ~ RL,
-      Result == "< MDL" ~ MDL,
-      TRUE              ~ as.numeric(Result)
-    )
-  ) %>% 
-  select(SampleCode, Analyte, Conc) %>% 
+filt_g_total <- all_data6 %>% 
+  select(SampleCode, Analyte, Result) %>% 
   filter(str_detect(Analyte, "^MeHg|^THg|OC$")) %>% 
   # Separate analyte and fraction into 2 individual variables
   mutate(
@@ -910,7 +905,7 @@ filt_g_total <- all_data4 %>%
     )
   ) %>% 
   separate(Analyte, into = c("Analyte", "Fraction"), sep = "- ") %>% 
-  pivot_wider(names_from = Fraction, values_from = Conc) %>% 
+  pivot_wider(names_from = Fraction, values_from = Result) %>% 
   # Look for filtered > total
   filter(filtered > total) %>% 
   # Restructure dataframe to use in a join
@@ -919,17 +914,17 @@ filt_g_total <- all_data4 %>%
   separate_rows(Analyte, sep = "/")
 
 # Pull out samples and add comment to QualCode variable
-all_data4_flag_fgt <- all_data4 %>% 
+all_data6_flag_fgt <- all_data6 %>% 
   inner_join(filt_g_total) %>% 
   mutate(QualCode = "R- FGT")
 
 # Bind data back together
-all_data4 <- all_data4 %>% 
+all_data7 <- all_data6 %>% 
   anti_join(filt_g_total) %>% 
-  bind_rows(all_data4_flag_fgt)
+  bind_rows(all_data6_flag_fgt)
 
 # Clean up
-rm(filt_g_total, all_data4_flag_fgt)
+rm(filt_g_total, all_data6_flag_fgt)
 
 
 # 8.4 Flag any other data to exclude from analyses ------------------------
@@ -937,14 +932,14 @@ rm(filt_g_total, all_data4_flag_fgt)
 # CCSB low flow channel on 3/15/2016 - 
 # Sample was collected inside of the CCSB, which is not representative of this station
 # Pull out these samples
-nr_sample <- all_data4 %>% 
+nr_sample <- all_data7 %>% 
   filter(
     SampleDate == "2016-03-15",
     StationName == "CCSB- Low Flow Channel"
   )
 
 # Add Qual Codes and Comments
-all_data4_flag_nrs <- nr_sample %>% 
+all_data7_flag_nrs <- nr_sample %>% 
   mutate(
     QualCode = if_else(is.na(QualCode), "R- NRS", "R- NRS, FV"),
     MME_Comments = if_else(
@@ -955,17 +950,36 @@ all_data4_flag_nrs <- nr_sample %>%
   )
 
 # Bind data back together
-all_data4 <- all_data4 %>% 
+all_data8 <- all_data7 %>% 
   anti_join(nr_sample) %>% 
-  bind_rows(all_data4_flag_nrs)
+  bind_rows(all_data7_flag_nrs)
 
 # Clean up
-rm(nr_sample, all_data4_flag_nrs)
+rm(nr_sample, all_data7_flag_nrs)
 
-# Export all_data4 to .csv file- added to Final data spreadsheet, and kept as a separate
-# .csv file to be added as a dataset to the openwaterhg package
-all_data4 %>% write_excel_csv("NormalSamples.csv", na = "")  # moved to SharePoint site
+# Export all_data8 to .csv file
+all_data8 %>% 
+  mutate(
+    # Convert Result variable to character indicating <MDL and <RL values as such
+    Result = case_when(
+      ResultQual == "< RL" ~ "< RL",
+      ResultQual == "< MDL" ~ "< MDL",
+      TRUE ~ as.character(Result)
+    ),
+    # Move DNQ flag to QualCode
+    QualCode = case_when(
+      is.na(QualCode) & str_detect(ResultQual, "^DNQ") ~ paste0("J- ", ResultQual),
+      !is.na(QualCode) & str_detect(ResultQual, "^DNQ") ~ paste(QualCode, ResultQual, sep = ", "),
+      TRUE ~ QualCode
+    )
+  ) %>% 
+  # Remove ResultQual
+  select(-ResultQual) %>% 
+  write_excel_csv("NormalSamples.csv", na = "")
 
-# The final copy of the Lab concentration data for the Yolo Bypass Inlet-Outlet Study is 
-# located here: M:\Data\Lab_Final\YB_Inlet-Outlet_Conc_Data.xlsx
+# This final copy of the Lab concentration data for the Yolo Bypass Inlet-Outlet Study
+# was added to the SharePoint site for the Open Water Final Report in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/NormalSamples.csv
+# A redundant file is in M:\Data\Inlet-Outlet_Final
+# This data was also added to the openwaterhg package as conc_data
 
