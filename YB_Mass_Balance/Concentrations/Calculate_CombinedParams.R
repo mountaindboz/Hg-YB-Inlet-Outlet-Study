@@ -5,18 +5,45 @@
 # Load packages
 library(tidyverse)
 
-# Import Concentration Data
-source("YB_Mass_Balance/Concentrations/Import_Conc_Data.R")
+# Define path on SharePoint site for data
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/DWR Documents - Open Water Final Report - Documents/Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final"
+  )
+)
 
-# Calculate all combined parameters
-comb_param <- all_conc %>% 
+# Import Concentration Data
+conc_orig <- read_csv(file.path(sharepoint_path, "NormalSamples.csv"))
+part_conc_orig <- read_csv(file.path(sharepoint_path, "Particulate_Conc.csv"))
+
+# Clean conc_orig
+conc_clean <- conc_orig %>% 
+  # Remove samples with QualCode "R"
+  filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
+  # Create a new variable Conc, which is a numeric version of Result with the MDL and RL for the ND values
+  mutate(
+    Conc = case_when(
+      Result == "< RL"  ~ RL,
+      Result == "< MDL" ~ MDL,
+      TRUE              ~ as.numeric(Result)
+    )
+  ) %>% 
+  # Clean up df
   select(
     StationName,
     SampleDate,
     CollectionTime,
     Analyte,
     Conc
-  ) %>% 
+  )
+
+# Bind conc_clean with calculated data for the particulate fractions of Hg, MeHg, and organic carbon
+all_conc <- bind_rows(conc_clean, part_conc_orig)
+
+# Calculate all combined parameters
+comb_param <- all_conc %>% 
+  select(-Units) %>% 
   filter(
     str_detect(Analyte, "^MeHg|^THg") | Analyte %in% c("TSS", "DOC", "TOC", "POC", "Aluminum- total"),
     Conc != 0  # Remove any obs with values of zero
@@ -114,4 +141,11 @@ comb_param_clean <- comb_param %>%
   rename(Parameter = Parameter2)
 
 # Export comb_param_clean df to a .csv file to be used in other scripts/analyses
-comb_param_clean %>% write_excel_csv("CombinedParameters.csv")  # moved to SharePoint site
+comb_param_clean %>% write_excel_csv("YB_Inlet-Outlet_CombinedParameters.csv")
+
+# This file was added to the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_CombinedParameters.xlsx
+# A redundant file is in M:\Data\Inlet-Outlet_Final
+# This data was also added to the openwaterhg package as comb_param_calc
+

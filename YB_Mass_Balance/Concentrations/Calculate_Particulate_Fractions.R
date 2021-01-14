@@ -15,11 +15,7 @@ sharepoint_path <- normalizePath(
 )
 
 # Import Concentration Data
-conc_orig <- 
-  read_csv(
-    paste0(sharepoint_path, "/NormalSamples.csv"),
-    col_types = "????????????c"
-  )
+conc_orig <- read_csv(file.path(sharepoint_path, "NormalSamples.csv"))
 
 # Calculate the particulate concentrations
 conc_part <- conc_orig %>% 
@@ -78,5 +74,11 @@ conc_part <- conc_orig %>%
   filter(!is.na(Conc))
   
 # Export conc_part df to a .csv file to be used in other scripts/analyses
-conc_part %>% write_excel_csv("Particulate_Conc.csv")  # moved to SharePoint site
+conc_part %>% write_excel_csv("Particulate_Conc.csv")
+
+# This file was added to the SharePoint site for the Open Water Final Report 
+# in the following location: 
+# /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/Particulate_Conc.csv
+# A redundant file is in M:\Data\Inlet-Outlet_Final
+# This data was also added to the openwaterhg package as part_conc_calc
 
