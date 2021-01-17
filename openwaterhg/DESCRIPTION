@@ -1,6 +1,6 @@
 Package: openwaterhg
 Title: Analysis Tools For DWR's Open Water Mercury Studies
-Version: 1.1.0.9000
+Version: 1.2.0.9000
 Authors@R: 
     person(given = "Dave",
            family = "Bosworth",
