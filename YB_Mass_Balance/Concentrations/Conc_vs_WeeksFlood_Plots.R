@@ -8,43 +8,16 @@ library(ggforce)
 library(corrr)
 library(broom)
 library(patchwork)
+library(openwaterhg)
 
-# Load common functions
-source("inlet_outlet_common_functions.R")
 
 # 1. Import and Clean Concentration Data --------------------------------------------------
 
-# Import raw concentration data
-conc_orig <- read_excel("../../../Data/Lab_Final/YB_Inlet-Outlet_Conc_Data.xlsx", sheet = "For R Analysis")
-
-# Clean conc_orig
-conc_clean <- conc_orig %>% 
-  # Remove samples with QualCode "R"
-  filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
-  mutate(SampleDate = as_date(SampleDate)) %>% 
-  mod_result() %>% 
-  # Select only necessary variables
-  select(
-    StationName,
-    SampleDate,
-    Analyte,
-    Conc,
-    Units
-  )
-
-# Import calculated particulate concentration data
-part_conc_orig <- read_csv("Concentrations/Particulate_Conc.csv") 
-
-# Clean part_conc_orig
-part_conc_clean <- part_conc_orig %>% 
-  select(-CollectionTimePST)
-
-# Import Combined Parameter data
-comb_param_orig <- read_csv("Concentrations/CombinedParameters.csv")
+# Import concentration data
+source("YB_Mass_Balance/Concentrations/Import_Conc_Data.R")
 
 # Clean MeHg and THg on solids data
-hg_solids_clean <- comb_param_orig %>% 
-  select(-c(CollectionTimePST:SamplingEvent)) %>% 
+hg_solids_clean <- comb_param_calc %>% 
   filter(Parameter %in% c("THg Concentration on Solids", "MeHg Concentration on Solids")) %>% 
   rename(
     Analyte = Parameter,
@@ -52,7 +25,7 @@ hg_solids_clean <- comb_param_orig %>%
   )
 
 # Bind all concentration data
-all_conc <- bind_rows(conc_clean, part_conc_clean, hg_solids_clean)
+all_conc <- bind_rows(all_conc, hg_solids_clean)
 
 # Filter and Clean all Conc Data
 all_conc_clean <- all_conc %>% 
@@ -288,14 +261,14 @@ conc_weeks_flood_plots_by_sta <- conc_weeks_flood_plots %>%
 
 # Print Conc vs. Time Inundated plots to .pdf files
   # Plots Grouped by Station
-  pdf(file = "Concentrations/Conc_vs_WeeksFlood_Plots_byStation.pdf", w = 13, h = 8.5)
+  pdf(file = "Conc_vs_WeeksFlood_Plots_byStation.pdf", w = 13, h = 8.5)
     for (p in conc_weeks_flood_plots_by_sta$group_plot) {
       print(p)
     }
   dev.off()
 
   # Plots Grouped by Analyte
-  pdf(file = "Concentrations/Conc_vs_WeeksFlood_Plots_byAnalyte.pdf", w = 13, h = 8.5)
+  pdf(file = "Conc_vs_WeeksFlood_Plots_byAnalyte.pdf", w = 13, h = 8.5)
     for (p in conc_weeks_flood_plots_by_ana$group_plot) {
       print(p)
     }

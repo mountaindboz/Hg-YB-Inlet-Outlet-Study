@@ -23,16 +23,12 @@ Load R packages necessary for this analysis:
 library(tidyverse)
 library(broom)
 library(rlang)
-```
-
-Import and Load Data:
-```{r import load data, message = FALSE, warning = FALSE}
-loads_orig <- read_csv("Loads/All_YB_Loads-R.csv")
+library(openwaterhg)
 ```
 
 Clean the original loads dataframe for analysis:
 ```{r clean load data}
-loads_clean <- loads_orig %>% 
+loads_clean <- loads_calc %>% 
   # only include a subset of the data
   filter(
     str_detect(Analyte, "OC$|Hg|TSS"),
@@ -60,7 +56,7 @@ load_units <- loads_clean %>%
 ```
 
 Sum inlet and outlet loads:
-```{r sum loads}
+```{r sum loads, message = FALSE}
 loads_sum <- loads_clean %>% 
   group_by(SamplingEvent, Analyte, LocType) %>% 
   summarize(TotalLoad = sum(Load)) %>% 
@@ -144,74 +140,71 @@ plot_scatter <- function(df, y, x, PlotTitle) {
 
 ## Filtered MeHg vs. DOC
 
-```{r fMeHg vs DOC output}
+```{r fMeHg vs DOC output, message = FALSE}
 plot_scatter(loads_out, fMeHg, DOC, "Output")
 ```
 
-```{r fMeHg vs DOC net}
+```{r fMeHg vs DOC net, message = FALSE}
 plot_scatter(loads_net, fMeHg, DOC, "Net")
 ```
 
 ## Particulate MeHg vs. POC
 
-```{r pMeHg vs POC output}
+```{r pMeHg vs POC output, message = FALSE}
 plot_scatter(loads_out, pMeHg, POC, "Output")
 ```
 
-```{r pMeHg vs POC net}
+```{r pMeHg vs POC net, message = FALSE}
 plot_scatter(loads_net, pMeHg, POC, "Net")
 ```
 
 ## Unfiltered MeHg vs. TOC
 
-```{r uMeHg vs TOC output}
+```{r uMeHg vs TOC output, message = FALSE}
 plot_scatter(loads_out, uMeHg, TOC, "Output")
 ```
 
-```{r uMeHg vs TOC net}
+```{r uMeHg vs TOC net, message = FALSE}
 plot_scatter(loads_net, uMeHg, TOC, "Net")
 ```
 
 ## Filtered Hg vs. DOC
 
-```{r fHg vs DOC output}
+```{r fHg vs DOC output, message = FALSE}
 plot_scatter(loads_out, fHg, DOC, "Output")
 ```
 
-```{r fHg vs DOC net}
+```{r fHg vs DOC net, message = FALSE}
 plot_scatter(loads_net, fHg, DOC, "Net")
 ```
 
 ## Particulate Hg vs. POC
 
-```{r pHg vs POC output}
+```{r pHg vs POC output, message = FALSE}
 plot_scatter(loads_out, pHg, POC, "Output")
 ```
 
-```{r pHg vs POC net}
+```{r pHg vs POC net, message = FALSE}
 plot_scatter(loads_net, pHg, POC, "Net")
 ```
 
 ## Unfiltered Hg vs. TOC
 
-```{r uHg vs TOC output}
+```{r uHg vs TOC output, message = FALSE}
 plot_scatter(loads_out, uHg, TOC, "Output")
 ```
 
-```{r uHg vs TOC net}
+```{r uHg vs TOC net, message = FALSE}
 plot_scatter(loads_net, uHg, TOC, "Net")
 ```
 
 ## TSS vs. TOC
 
-```{r TSS vs TOC output}
+```{r TSS vs TOC output, message = FALSE}
 plot_scatter(loads_out, TSS, TOC, "Output")
 ```
 
-```{r TSS vs TOC net}
+```{r TSS vs TOC net, message = FALSE}
 plot_scatter(loads_net, TSS, TOC, "Net")
 ```
-
-
-
 

@@ -9,7 +9,7 @@ output:
       collapsed: false
     code_folding: hide
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r setup, include = FALSE}
@@ -43,47 +43,16 @@ library(readxl)
 library(lubridate)
 library(scales)
 library(knitr)
-```
-
-Load common functions:
-```{r load common functions}
-# Load common functions
-source("inlet_outlet_common_functions.R")
+library(openwaterhg)
 ```
 
 Bring in and bind all concentration data:
 ```{r import and clean conc data, message = FALSE, warning = FALSE}
 # Import concentration data
-conc_orig <- read_excel("../../../Data/Lab_Final/YB_Inlet-Outlet_Conc_Data.xlsx", sheet = "For R Analysis")
+source("YB_Mass_Balance/Concentrations/Import_Conc_Data.R")
 
-# Clean conc_orig
-conc_clean <- conc_orig %>% 
-  # Remove samples with QualCode "R"
-  filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
-  mutate(SampleDate = as_date(SampleDate)) %>% 
-  mod_result() %>% 
-  mutate(
-    Detect = if_else(
-      ResQual == 1,
-      "Non-detect",
-      "Detect"
-    )
-  )
-
-# Import calculated particulate concentration data
-part_conc_orig <- read_csv("Concentrations/Particulate_Conc.csv") 
-
-# Clean part_conc_orig
-part_conc_clean <- part_conc_orig %>% 
-  select(-CollectionTimePST) %>% 
-  mutate(Detect = "Detect")
-
-# Import combined parameter data
-comb_param_orig <- read_csv("Concentrations/CombinedParameters.csv")
-
-# Clean comb_param_orig
-comb_param_clean <- comb_param_orig %>% 
-  select(-c(CollectionTimePST:SamplingEvent)) %>% 
+# Clean combined parameter data
+comb_param_clean <- comb_param_calc %>% 
   rename(
     Analyte = Parameter,
     Conc = Value
@@ -91,14 +60,11 @@ comb_param_clean <- comb_param_orig %>%
   mutate(Detect = "Detect")
 
 # Bind all concentration data
-all_conc <- bind_rows(conc_clean, part_conc_clean, comb_param_clean)
+all_conc <- bind_rows(all_conc, comb_param_clean)
 
 # Filter and clean concentration data
 all_conc_clean <- all_conc %>% 
-  filter(
-    !str_detect(StationName, "^YB|^Cache Slough|^Miner Slough" ),
-    SampleDate !="2014-12-12"
-  ) %>% 
+  filter(!str_detect(StationName, "^Cache|^Miner")) %>% 
   add_samplingevent() %>% 
   conv_fact_samplingevent() %>% 
   add_short_sta_names() %>% 
@@ -159,25 +125,16 @@ conc_per_hg <- conc_hg %>%
 
 Bring in and clean Specific Conductance data:
 ```{r import and clean SpCond data, message = FALSE}
-# Import Specific Conductance Data
-spcond_orig <- read_excel("FieldMeasurements/FieldMeasurements.xlsx")
-
-# Clean spcond_orig
-spcond_clean <- spcond_orig %>% 
-  mutate(SampleDate = as_date(Date)) %>% 
+spcond_clean <- field_data %>% 
   select(
-    StationName,
-    SampleDate,
-    "Specific Conductance"
-  ) %>% 
-  pivot_longer(
-    cols = "Specific Conductance",
-    names_to = "Analyte",
-    values_to = "Conc"
+    StationName, 
+    SampleDate, 
+    Conc = SpCond
   ) %>% 
   mutate(
-    Detect = "Detect",
-    Units = "uS/cm"
+    Analyte = "Specific Conductance",
+    Units = "uS/cm",
+    Detect = "Detect"
   ) %>% 
   add_samplingevent() %>% 
   conv_fact_samplingevent() %>% 

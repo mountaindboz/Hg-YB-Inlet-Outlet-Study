@@ -51,19 +51,20 @@ comb_param_clean <- comb_param_calc %>%
   rename(
     Analyte = Parameter,
     Conc = Value
-  )
+  ) %>% 
+  mutate(Detect = "Detect")
 
 # Clean Specific Conductance field data to bind to all_conc
 spcond_clean <- field_data %>% 
-  select(StationName, SampleDate, SpCond) %>% 
-  pivot_longer(
-    cols = SpCond,
-    names_to = "Analyte",
-    values_to = "Conc"
+  select(
+    StationName, 
+    SampleDate, 
+    Conc = SpCond
   ) %>% 
   mutate(
     Analyte = "Specific Conductance",
-    Units = "uS/cm"
+    Units = "uS/cm",
+    Detect = "Detect"
   )
 
 # Bind all data
@@ -71,12 +72,6 @@ all_conc1 <- bind_rows(all_conc, comb_param_clean, spcond_clean)
 
 # Clean all concentration data
 all_conc_clean <- all_conc1 %>% 
-  mutate(
-    Detect = case_when(
-      ResQual == 1 ~ "Non-detect",
-      TRUE ~ "Detect"
-    )
-  ) %>% 
   select(
     StationName,
     SampleDate,

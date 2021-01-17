@@ -2,118 +2,145 @@
 # EDA plots of the Field Measurements collected in 2017 during the Yolo Bypass flood event
 
 library(tidyverse)
-library(readxl)
 library(lubridate)
+library(openwaterhg)
+library(scales)
 
-# Bring in data
-FieldM <- read_excel(path = "FieldMeasurements/FieldMeasurements.xlsx") %>% 
-  # Create date column with just date
-  mutate(date=as_date(Date)) %>% 
-  # Pivot df to long format
+# Create a data frame of Parameter names for plots and their units
+param_key <- tibble(
+  Parameter = c(
+    "WaterTempC", 
+    "SpCond", 
+    "DissOxy",
+    "Turbidity"
+  ),
+  Parameter_plot = c(
+    "Water Temperature", 
+    "Specific Conductance", 
+    "Dissolved Oxygen",
+    "Turbidity"
+  ),
+  Units = c(
+    "Degrees C",
+    "uS/cm",
+    "mg/L",
+    "NTU"
+  )
+)
+
+# Prepare Field Measurement data for plots
+field_data_clean <- field_data %>% 
   pivot_longer(
-    cols = 'Water Temperature':Turbidity,
-    names_to = "coc",
-    values_to = "Result"
+    cols = WaterTempC:Turbidity,
+    names_to = "Parameter",
+    values_to = "Value"
   ) %>% 
-  # Add some new variables
-  mutate(
-    RL = 1,
-    nd = as.numeric(grepl('<', Result)), 
-    conc = if_else(
-      nd == 1, 
-      as.numeric(RL), 
-      as.numeric(Result)
-    ),
-    units = case_when(
-      str_detect(coc, "^W") ~ "Degrees C",
-      str_detect(coc, "^S") ~ "uS/cm",
-      str_detect(coc, "^D") ~ "mg/L",
-      str_detect(coc, "T") ~ "NTU"
-    ),
-    Year = year(date)
-  ) %>% 
-  select(-c(DateTime, Date)) %>% 
-  filter(!is.na(conc))
+  # Add parameter names for plots and units variable
+  left_join(param_key) %>% 
+  # Add variable with shortened station names for plots and apply plotting order
+  add_short_sta_names() %>% 
+  conv_fact_short_sta_names() %>% 
+  # Add a variable for year
+  mutate(Year = year(SampleDate)) %>% 
+  # Remove NA values
+  filter(!is.na(Value)) %>% 
+  # Select variables to keep
+  select(
+    ShortName,
+    SampleDate,
+    Year,
+    Parameter_plot,
+    Value,
+    Units
+  )
 
-# Bring in Key for short Station Names
-StationNameKey <- read_excel(path = 'FieldMeasurements/StationNameKey_forPlots.xlsx')
-
-# Perform left join to add short Station Names to Field Measurement data
-FieldM <- left_join(FieldM, StationNameKey)
-
-# Setup plotting order
-Sta.short <- sort(unique(FieldM$locid))
-Sta.short.Order <- Sta.short[c(5:7,14,2:4,8,12,18,16,17,15,11,9,13,1,10)]
-
-FieldM <- FieldM %>% 
-  mutate(locid = factor(locid, levels = Sta.short.Order))
-
-# Load TS plot script
-source("C:/Users/dboswort/OneDrive - California Department of Water Resources/Stats/R_Software/Basic_Stats_Course/explore_tsplot_grid.R")  
-
-# Create Time Series plots by Analyte for just 2017 sampling events
-pdf(file = "FieldMeasurements/2017_FieldMeas_TS.pdf", w=11, h=8.5)
-FieldM %>%
-  filter(Year == 2017) %>% 
-  group_by(coc) %>% 
-  do(plot=explore_tsplot_grid(.,header.clip = .$coc[1],showlim = F))
+# Create Time Series plots by parameter for just 2017 sampling events
+pdf(file = "2017_FieldMeas_TS.pdf", w = 11, h = 8.5)
+  field_data_clean %>%
+    filter(Year == 2017) %>% 
+    group_by(Parameter_plot) %>% 
+    do(plot = {
+      print(.$Parameter_plot[1])
+      p <- 
+        ggplot(
+          data = .,
+          aes(
+            x = SampleDate, 
+            y = Value
+          )
+        ) + 
+        geom_point() +
+        geom_line() +
+        facet_wrap(vars(ShortName)) +
+        labs(
+          title = paste0('Time Series Plots by Station for ', .$Parameter_plot[1]),
+          subtitle = "2017 Sampling Events",
+          y = paste0('Value (', .$Units[1], ')')
+        ) +
+        scale_x_date(
+          name = "Sampling Date",
+          breaks = breaks_pretty(5),
+          labels = label_date_short()
+        )
+      
+      print(p)
+    })
 dev.off()
 
-# Create Boxplots by Analyte for all sampling events
-pdf(file = "FieldMeasurements/FieldMeas_Boxplots.pdf", w=11, h=8.5)
-FieldM %>% 
-  mutate(Year = as.character(Year)) %>%
-  group_by(coc) %>% 
-  do(plot = {
-    print(.$coc[1])
-    p <- 
-      ggplot(
-        data = .,
-        aes(
-          x = locid, 
-          y = conc
-        )
-      ) + 
-      geom_boxplot(outlier.shape = NA) +
-      geom_jitter(  # Add jitter points
-        width=0.25,
-        aes(color = Year)
-      ) +  
-      labs(
-        title = paste0('Boxplot for ',.$coc[1]),
-        subtitle = "All Sampling Events",
-        x = 'Station',
-        y = paste0('Concentration (',.$units[1],')')
-        ) +
-      theme(axis.text.x = element_text(angle = 90, hjust = 1))  #vertical x-axis labels
-    
-    print(p)
-  })
+# Create Boxplots by parameter for all sampling events
+pdf(file = "FieldMeas_Boxplots.pdf", w = 11, h = 8.5)
+  field_data_clean %>% 
+    mutate(Year = as.character(Year)) %>%
+    group_by(Parameter_plot) %>% 
+    do(plot = {
+      print(.$Parameter_plot[1])
+      p <- 
+        ggplot(
+          data = .,
+          aes(
+            x = ShortName, 
+            y = Value
+          )
+        ) + 
+        geom_boxplot(outlier.shape = NA) +
+        geom_jitter(
+          width = 0.25,
+          aes(color = Year)
+        ) +  
+        labs(
+          title = paste0('Boxplot for ', .$Parameter_plot[1]),
+          subtitle = "All Sampling Events",
+          x = 'Station',
+          y = paste0('Value (', .$Units[1], ')')
+          ) +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))  #vertical x-axis labels
+      
+      print(p)
+    })
 dev.off()
 
 # Create Histograms for just 2017 sampling events
-pdf(file = "FieldMeasurements/2017_FieldMeas_HistPlots.pdf", w=11, h=8.5)
-FieldM %>% 
-  filter(Year == 2017) %>% 
-  group_by(coc) %>% 
-  do(plot = {
-    print(.$coc[1])
-    p <- 
-      ggplot(
-        data = .,
-        aes(x = conc)
-      ) + 
-      geom_histogram(bins = 5) +
-      facet_wrap(vars(locid)) +
-      labs(
-        title = paste0('Histograms for ', .$coc[1]),
-        subtitle = "Just 2017 Sampling Events",
-        x = paste0('Concentration (', .$units[1], ')'),
-        y = 'Count'
-      )
-    
-    print(p)
-  })
+pdf(file = "2017_FieldMeas_HistPlots.pdf", w = 11, h = 8.5)
+  field_data_clean %>% 
+    filter(Year == 2017) %>% 
+    group_by(Parameter_plot) %>% 
+    do(plot = {
+      print(.$Parameter_plot[1])
+      p <- 
+        ggplot(
+          data = .,
+          aes(x = Value)
+        ) + 
+        geom_histogram(bins = 5) +
+        facet_wrap(vars(ShortName)) +
+        labs(
+          title = paste0('Histograms for ', .$Parameter_plot[1]),
+          subtitle = "Just 2017 Sampling Events",
+          x = paste0('Value (', .$Units[1], ')'),
+          y = 'Count'
+        )
+      
+      print(p)
+    })
 dev.off()
-
 

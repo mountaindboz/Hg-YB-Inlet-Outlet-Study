@@ -28,42 +28,24 @@ library(ggforce)
 library(corrr)
 library(knitr)
 library(kableExtra)
-```
-
-Load common functions:
-```{r load common functions}
-# Load common functions
-source("inlet_outlet_common_functions.R")
+library(openwaterhg)
 ```
 
 Bring in and bind all concentration data:
 ```{r import and clean conc data, message = FALSE, warning = FALSE}
 # Import concentration data
-conc_orig <- read_excel("../../../Data/Lab_Final/YB_Inlet-Outlet_Conc_Data.xlsx", sheet = "For R Analysis")
+source("YB_Mass_Balance/Concentrations/Import_Conc_Data.R")
 
-# Clean conc_orig
-conc_clean <- conc_orig %>% 
-  # Remove samples with QualCode "R"
-  filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
-  mutate(SampleDate = as_date(SampleDate)) %>% 
-  mod_result() %>% 
-  # Select only necessary variables
-  select(
-    StationName,
-    SampleDate,
-    Analyte,
-    Conc
+# Clean MeHg and THg on solids data
+hg_solids_clean <- comb_param_calc %>% 
+  filter(Parameter %in% c("THg Concentration on Solids", "MeHg Concentration on Solids")) %>% 
+  rename(
+    Analyte = Parameter,
+    Conc = Value
   )
 
-# Import calculated particulate concentration data
-part_conc_orig <- read_csv("Concentrations/Particulate_Conc.csv") 
-
-# Clean part_conc_orig
-part_conc_clean <- part_conc_orig %>% 
-  select(-c(CollectionTimePST, Units))
-
 # Bind all concentration data
-all_conc <- bind_rows(conc_clean, part_conc_clean)
+all_conc <- bind_rows(all_conc, hg_solids_clean)
 
 # Create a df of all analytes to include and their shortened names
 analytes <- tibble(
@@ -109,8 +91,7 @@ analytes <- tibble(
 all_conc_clean <- all_conc %>% 
   # Keep only necessary data
   filter(
-    SampleDate != "2014-12-12",
-    !str_detect(StationName, "Low Flow|^Sac|^YB"),
+    !str_detect(StationName, "Low Flow|^Sac"),
     Analyte %in% analytes$analyte_long
   ) %>% 
   # Shorten Analyte names
@@ -321,12 +302,13 @@ all_conc_corr_analysis <- all_conc_nestdf_sta %>%
   )
 ```
 
-# Results
+# Results {.tabset .tabset-pills}
 
 ```{r print plots and corr matrices, echo = FALSE, message = FALSE, results = "asis", fig.height = 9, fig.width = 13}
 for (i in 1:nrow(all_conc_corr_analysis)) {
   # Create subheadings for each Station
-  cat("## ", as.character(all_conc_corr_analysis$StationName[i]), "\n\n### Plots\n\n") 
+  cat("## ", as.character(all_conc_corr_analysis$StationName[i]), " {.tabset .tabset-pills}") 
+  cat("\n\n### Plots\n\n")
   # Print Scatterplot Matrices
   print(all_conc_corr_analysis$plots_scatt[[i]])
   cat("\n\n")

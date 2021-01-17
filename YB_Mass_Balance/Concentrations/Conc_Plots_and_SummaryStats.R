@@ -5,66 +5,19 @@ library(tidyverse)
 library(readxl)
 library(lubridate)
 library(scales)
+library(openwaterhg)
 
-# Load common functions
-source("inlet_outlet_common_functions.R")
 
-# 1. Import Data and structure for plotting -------------------------------------------------------------
+# 1. Prepare Data -------------------------------------------------------------
 
 # Import concentration data
-conc_orig <- read_excel("../../../Data/Lab_Final/YB_Inlet-Outlet_Conc_Data.xlsx", sheet = "For R Analysis")  
-
-# Clean conc_orig
-conc_clean <- conc_orig %>% 
-  # Remove samples with QualCode "R"
-  filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
-  # Clean up date and time formatting- extract date and time from dttm variables
-  mutate(
-    SampleDate = as_date(SampleDate),
-    CollectionTimePST = hms::as_hms(CollectionTimePST)
-  ) %>%
-  # Create a new variable Conc, which is a numeric version of Result with the MDL and RL for the ND values
-  mod_result() %>% 
-  # Select only necessary variables
-  select(
-    StationName,
-    SampleDate,
-    CollectionTimePST,
-    Analyte,
-    Conc,
-    ResQual,
-    Units,
-    MME_Comments,
-    QualCode
-  )
-
-# Import calculated particulate concentration data
-part_conc_orig <- read_csv("Concentrations/Particulate_Conc.csv")
-
-# Clean part_conc_orig
-part_conc_clean <- part_conc_orig %>% 
-  mutate(ResQual = 0)
-
-# Bind all concentration data
-all_conc <- bind_rows(conc_clean, part_conc_clean)
+source("YB_Mass_Balance/Concentrations/Import_Conc_Data.R")
 
 # Filter and clean concentration data
 all_conc_clean <- all_conc %>% 
-  filter(
-    !str_detect(StationName, "^YB" ),
-    SampleDate !="2014-12-12"
-  ) %>% 
   # Create some new variables
-  mutate(
-    Year = year(SampleDate),
-    Detect = if_else(
-      ResQual == 1,
-      "Non-detect",
-      "Detect"
-    )
-  ) %>% 
+  mutate(Year = year(SampleDate)) %>% 
   add_samplingevent() %>% 
-  # Shorten StationNames
   add_short_sta_names() %>% 
   # Convert some variables to factors to apply plotting order
   conv_fact_long_sta_names() %>% 
@@ -75,7 +28,7 @@ all_conc_clean <- all_conc %>%
     StationName,
     ShortName,
     SampleDate,
-    CollectionTimePST,
+    CollectionTime,
     Year,
     SamplingEvent,
     Analyte,
@@ -181,7 +134,7 @@ all_conc_clean_17_main <- all_conc_clean_17 %>% filter(Analyte %in% ana_main)
 # 2.1 Plot all parameters -------------------------------------------------
 
 # Grouped by station
-pdf(file = "Concentrations/Conc_Plots_byStation.pdf", w=15, h=8.5)
+pdf(file = "Conc_Plots_byStation.pdf", w=15, h=8.5)
   # All sampling events
   all_conc_clean_main %>% 
     group_by(StationName) %>% 
@@ -267,7 +220,7 @@ pdf(file = "Concentrations/Conc_Plots_byStation.pdf", w=15, h=8.5)
 dev.off()
   
 # Grouped by analyte
-pdf(file = "Concentrations/Conc_Plots_byAnalyte.pdf", w=15, h=8.5)
+pdf(file = "Conc_Plots_byAnalyte.pdf", w=15, h=8.5)
   # All sampling events
   all_conc_clean_main %>% 
     group_by(Analyte) %>% 
@@ -345,7 +298,7 @@ pdf(file = "Concentrations/Conc_Plots_byAnalyte.pdf", w=15, h=8.5)
 dev.off()
     
 # Boxplots
-pdf(file = "Concentrations/Conc_Boxplots.pdf", w=15, h=8.5)
+pdf(file = "Conc_Boxplots.pdf", w=15, h=8.5)
   all_conc_clean_main %>% 
     mutate(Year = as.character(Year)) %>% 
     group_by(Analyte) %>% 
@@ -381,7 +334,7 @@ dev.off()
 
 # 2.2 Plot Analyte Fractions ----------------------------------------------
 
-pdf(file = "Concentrations/Conc_Fraction_Plots.pdf", w=15, h=8.5)
+pdf(file = "Conc_Fraction_Plots.pdf", w=15, h=8.5)
   # Plot fractions of MeHg, THg, and OC for each sampling event faceted by station
   all_conc_clean_frac %>% 
     group_by(AnalyteGroup) %>% 
@@ -517,7 +470,7 @@ all_conc_clean_tdt <-
   )
 
 # Create plots
-pdf(file = "Concentrations/Conc_ToeDrainTransect_Plots.pdf", w=11, h=8.5)  
+pdf(file = "Conc_ToeDrainTransect_Plots.pdf", w=11, h=8.5)  
   # Facet by sampling event, grouped by parameter
   all_conc_clean_tdt$MainAnalytes %>% 
     group_by(Analyte) %>% 
@@ -639,27 +592,19 @@ dev.off()
 
 # 2.4 Plot SpConc, ICP, and ICP-MS results --------------------------------
 
-# Import Specific Conductance Data
-spcond_orig <- read_excel("FieldMeasurements/FieldMeasurements.xlsx")
-
 # Clean spcond_orig
-spcond_clean <- spcond_orig %>% 
-  mutate(SampleDate = as_date(Date)) %>% 
+spcond_clean <- field_data %>% 
   select(
     StationName,
     SampleDate,
-    "Specific Conductance"
-  ) %>% 
-  pivot_longer(
-    cols = "Specific Conductance",
-    names_to = "Analyte",
-    values_to = "Conc"
+    Conc = SpCond
   ) %>% 
   # Create some new variables
   mutate(
     Year = year(SampleDate),
     Detect = "Detect",
-    Units = "uS/cm"
+    Units = "uS/cm",
+    Analyte = "Specific Conductance"
   ) %>% 
   add_samplingevent() %>% 
   add_short_sta_names() %>% 
@@ -719,7 +664,7 @@ all_conc_clean_icp <- all_conc_clean %>%
   )
 
 # Create Plots
-pdf(file = "Concentrations/Conc_ICP_Plots.pdf", w=15, h=8.5)
+pdf(file = "Conc_ICP_Plots.pdf", w=15, h=8.5)
 # Facet by parameter, grouped by sampling event
 all_conc_clean_icp %>% 
   group_by(SamplingEvent) %>% 
@@ -762,9 +707,6 @@ dev.off()
 
 # 3. Calculate Summary Statistics -----------------------------------------
 
-# Bring in Summary Stats script
-source("../../General_R_Code/Summary_Stats_1or2_Groups.R")
-
 # Summarize Conc data by Station and Analyte
   all_conc_clean_list <- 
     list(
@@ -772,7 +714,7 @@ source("../../General_R_Code/Summary_Stats_1or2_Groups.R")
       Just2017 = all_conc_clean_17
     )
   
-  all_conc_clean_summ <- map(all_conc_clean_list, ~SummStat(.x, Conc, StationName, Analyte))
+  all_conc_clean_summ <- map(all_conc_clean_list, ~summ_stat(.x, Conc, StationName, Analyte))
   
   # Count number of Non-detects per Station-Analyte combo
   all_conc_clean_nd <- all_conc_clean_list %>% 
@@ -809,16 +751,11 @@ source("../../General_R_Code/Summary_Stats_1or2_Groups.R")
     )
   
   frac_per_summ <- frac_per_list %>% 
-    map(~SummStat(.x, Percent, StationName, Analyte)) %>% 
+    map(~summ_stat(.x, Percent, StationName, Analyte)) %>% 
     map(~separate(.x, Analyte, into = c("AnalyteGroup", "Fraction"), sep = "- "))
   
   # Export Summary Statistics
   frac_per_summ$AllEvents %>% write_excel_csv("FracPer_SummaryStats_all.csv")
   frac_per_summ$Just2017 %>% write_excel_csv("FracPer_SummaryStats_2017.csv")
-  
-  
-# All Concentration-based summary stats are stored in the following spreadsheet:
-  # M:\YB_Inlet-Outlet_Study\Data_Analysis\Final_Report\Conc_Data_Analysis.xlsx
-  
   
   

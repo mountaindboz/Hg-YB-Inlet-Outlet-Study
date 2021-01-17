@@ -1,21 +1,29 @@
 # Yolo Bypass Inlet-Outlet Study
-# Purpose: 
-  # 1. Calculate Loads for all sampling events
-  # 2. Compare two different approaches to calculate loads for:
-    # Outlet- SCHISM vs. Balanced (Outlet flow = sum of Inlet flows)
-    # Below Liberty Island- raw vs. scaled (adjusted using the sum of Inlet flows)
+# Purpose: Compare two different approaches to calculate loads for:
+  # Outlet- SCHISM vs. Balanced (Outlet flow = sum of Inlet flows)
+  # Below Liberty Island- raw vs. scaled (adjusted using the sum of Inlet flows)
 # Author: Dave Bosworth
 
 # Load packages
 library(tidyverse)
 library(lubridate)
+library(openwaterhg)
 
 # 1. Concentration Data ------------------------------------------------------
 
 # 1.1 Import and Clean data -----------------------------------------------
 
-# Import concentration data
-source("YB_Mass_Balance/Concentrations/Import_Conc_Data.R")
+# Clean conc_data
+conc_data_clean <- conc_data %>% 
+  # Remove samples with QualCode "R"
+  filter(is.na(QualCode) | !str_detect(QualCode, "^R")) %>%
+  # Create a new variable Conc, which is a numeric version of Result with the MDL and RL for the below detection values
+  add_num_result() %>% 
+  # Clean up df
+  select(SampleCode:Analyte, Conc, RL:QualCode)
+
+# Bind conc_data with calculated data for the particulate fractions of Hg, MeHg, and organic carbon
+all_conc <- bind_rows(conc_data_clean, part_conc_calc)
 
 # Create a vector of all stations to include
 Stations <- c(
@@ -53,30 +61,18 @@ Analytes <- c(
   "VSS"
 )
 
-# Structure all_conc df to be used for load calculations
-conc_clean <- all_conc %>% 
+# Structure all_conc dataframe to be used for load calculations
+all_conc_clean <- all_conc %>% 
   # Keep only necessary data
   filter(
     StationName %in% Stations,
     Analyte %in% Analytes
   ) %>% 
-  # Create a standardized variable to identify each unique sampling event, and a Year variable
+  # Create a standardized variable to identify each unique sampling event
+  add_samplingevent() %>% 
   mutate(
+    # Add a variable for the year
     Year = year(SampleDate),
-    SampleDate = as.character(SampleDate),
-    SamplingEvent = case_when(
-      SampleDate %in% c("2014-12-22", "2014-12-23") ~ "Dec 22-23, 2014",
-      SampleDate %in% c("2016-03-15", "2016-03-16") ~ "Mar 15-16, 2016",
-      SampleDate %in% c("2017-01-11", "2017-01-12") ~ "Jan 11-12, 2017",
-      SampleDate %in% c("2017-01-24", "2017-01-25") ~ "Jan 24-25, 2017",
-      SampleDate %in% c("2017-01-31", "2017-02-01") ~ "Jan 31-Feb 1, 2017",
-      SampleDate %in% c("2017-02-14", "2017-02-16") ~ "Feb 14-15, 2017",
-      SampleDate %in% c("2017-03-01", "2017-03-02") ~ "Mar 1-2, 2017",
-      SampleDate %in% c("2017-03-15", "2017-03-16") ~ "Mar 15-16, 2017",
-      SampleDate %in% c("2017-03-28", "2017-03-29") ~ "Mar 28-29, 2017",
-      SampleDate %in% c("2017-04-11", "2017-04-12") ~ "Apr 11-12, 2017",
-      SampleDate %in% c("2017-04-25", "2017-04-26") ~ "Apr 25-26, 2017"
-    ),
     # Calculate the number of significant digits in the Conc values
     digits = case_when(
       Analyte %in% c("Iron- filtered", "Manganese- filtered") ~ 3,
@@ -105,7 +101,7 @@ conc_clean <- all_conc %>%
 
 # 1.2 Average Concentration data for a few of the Input stations ------------
 # CCSB Overflow Weir- North and South
-CCSB <- conc_clean %>% 
+CCSB <- all_conc_clean %>% 
   filter(str_detect(StationName, "Overflow")) %>% 
   # Group and summarize to average the North and South stations
   group_by(SamplingEvent, Year, Analyte, Units) %>% 
@@ -114,7 +110,7 @@ CCSB <- conc_clean %>%
     digits = min(digits)
   ) %>%
   ungroup() %>% 
-  # Pivot df back into long format
+  # Restructure dataframe back into long format
   pivot_longer(
     cols = "CCSB- Overflow Weir", 
     names_to = "StationName", 
@@ -122,7 +118,7 @@ CCSB <- conc_clean %>%
   )
 
 # Fremont Weir
-Fremont <- conc_clean %>% 
+Fremont <- all_conc_clean %>% 
   # Filter out Fremont Weir stations
   filter(str_detect(StationName, "^Fremont Weir")) %>% 
   # Group and summarize to average the Fremont Weir stations
@@ -132,15 +128,15 @@ Fremont <- conc_clean %>%
     digits = min(digits),
   ) %>%
   ungroup() %>% 
-  # Pivot df back into long format
+  # Restructure dataframe back into long format
   pivot_longer(
     cols = "Fremont Weir", 
     names_to = "StationName", 
     values_to = "Conc"
   )
 
-# Add back CCSB and Fremont Weir df's to ConcData df
-conc_clean1 <- conc_clean %>% 
+# Add back CCSB and Fremont Weir dataframes to all_conc_clean dataframe
+all_conc_clean1 <- all_conc_clean %>% 
   filter(!str_detect(StationName, "Overflow|^Fremont")) %>% 
   bind_rows(CCSB, Fremont)
 
@@ -152,7 +148,7 @@ rm(CCSB, Fremont)
 # The DOC concentration was greater than the TOC concentration at Liberty Cut on 2/16/2017
 # Need to estimate these values in order to calculate loads by using the averages of
 # the Toe Drain at 1/2 Lisbon and Shag Slough stations
-oc_out_feb16 <- conc_clean1 %>% 
+oc_out_feb16 <- all_conc_clean1 %>% 
   filter(
     StationName %in% c("Toe Drain at 1/2 Lisbon", "Shag Slough below Stairsteps"),
     Analyte %in% c("TOC", "DOC", "POC"),
@@ -166,7 +162,7 @@ oc_out_feb16 <- conc_clean1 %>%
   ungroup() %>% 
   mutate(StationName = "Liberty Cut below Stairsteps")
 
-conc_clean2 <- bind_rows(conc_clean1, oc_out_feb16)
+all_conc_clean2 <- bind_rows(all_conc_clean1, oc_out_feb16)
 
 # Clean up
 rm(oc_out_feb16)
@@ -175,213 +171,208 @@ rm(oc_out_feb16)
 # 1.4 Create some additional outlet sampling locations ----------------------
 # This is necessary to match the flow data from the SCHISM model
 
-# 2016 sampling event
-  # Define Concentration values
-  OutSta_2016_c <- conc_clean2 %>% 
-    # Filter out the outlet stations
-    filter(
-      Year == 2016,
-      StationName %in% c(
-        "Liberty Cut below Stairsteps",
-        "Shag Slough below Stairsteps",
-        "Toe Drain at 1/2 Lisbon"
-      )
-    ) %>% 
-    # Pivot Conc by StationName to stack three stations next to each other
-    pivot_wider(
-      id_cols = -digits,
-      names_from = StationName, 
-      values_from = Conc
-    ) %>% 
-    # Rename the StationNames
-    rename(
-      Liberty = "Liberty Cut below Stairsteps",
-      Shag = "Shag Slough below Stairsteps",
-      Toe = "Toe Drain at 1/2 Lisbon"
-    ) %>% 
-    # Create new variables for Liberty Island Breach locations
-    mutate(
-      "Liberty Island Breach 1" = Shag,  #this breach is closest to the Shag Slough site
-      "Liberty Island Breach 2" = Liberty,  #this breach is closest to the Liberty Cut site
-      "Liberty Island Breach 3" = Toe  #this breach is closest to the Toe Drain at 1/2 Lisbon site
-    ) %>% 
-    # Remove Liberty, Shag, and Toe since they are no longer necessary
-    select(-c(Toe, Liberty, Shag)) %>% 
-    # Pivot df back into long format
-    pivot_longer(
-      cols = c("Liberty Island Breach 1", "Liberty Island Breach 2", "Liberty Island Breach 3"),
-      names_to = "StationName",
-      values_to = "Conc"
+# Define concentration values for the outlets for the 2016 sampling event
+OutSta_2016_c <- all_conc_clean2 %>%
+  # Filter out the outlet stations
+  filter(
+    Year == 2016,
+    StationName %in% c(
+      "Liberty Cut below Stairsteps",
+      "Shag Slough below Stairsteps",
+      "Toe Drain at 1/2 Lisbon"
     )
-  
-  # Define significant digits for each new station
-  OutSta_2016_d <- conc_clean2 %>% 
-    # Filter out the outlet stations
-    filter(
-      Year == 2016,
-      StationName %in% c(
-        "Liberty Cut below Stairsteps",
-        "Shag Slough below Stairsteps",
-        "Toe Drain at 1/2 Lisbon"
-      )
-    ) %>% 
-    # Pivot digits by StationName to stack three stations next to each other
-    pivot_wider(
-      id_cols = -Conc,
-      names_from = StationName, 
-      values_from = digits
-    ) %>% 
-    # Rename the StationNames
-    rename(
-      Liberty = "Liberty Cut below Stairsteps",
-      Shag = "Shag Slough below Stairsteps",
-      Toe = "Toe Drain at 1/2 Lisbon"
-    ) %>% 
-    # Create new variables for Liberty Island Breach locations
-    mutate(
-      "Liberty Island Breach 1" = Shag,  #this breach is closest to the Shag Slough site
-      "Liberty Island Breach 2" = Liberty,  #this breach is closest to the Liberty Cut site
-      "Liberty Island Breach 3" = Toe  #this breach is closest to the Toe Drain at 1/2 Lisbon site
-    ) %>% 
-    # Remove Liberty, Shag, and Toe since they are no longer necessary
-    select(-c(Toe, Liberty, Shag)) %>% 
-    # Pivot df back into long format
-    pivot_longer(
-      cols = c("Liberty Island Breach 1", "Liberty Island Breach 2", "Liberty Island Breach 3"),
-      names_to = "StationName",
-      values_to = "digits"
-    )
-  
-  # Join df's together
-  OutSta_2016 <- left_join(OutSta_2016_c, OutSta_2016_d)
+  ) %>%
+  # Restructure the dataframe
+  pivot_wider(
+    id_cols = -digits,
+    names_from = StationName,
+    values_from = Conc
+  ) %>%
+  rename(
+    Liberty = "Liberty Cut below Stairsteps",
+    Shag = "Shag Slough below Stairsteps",
+    Toe = "Toe Drain at 1/2 Lisbon"
+  ) %>%
+  # Create new variables for Liberty Island Breach locations
+  mutate(
+    "Liberty Island Breach 1" = Shag,  #this breach is closest to the Shag Slough site
+    "Liberty Island Breach 2" = Liberty,  #this breach is closest to the Liberty Cut site
+    "Liberty Island Breach 3" = Toe  #this breach is closest to the Toe Drain at 1/2 Lisbon site
+  ) %>%
+  # Remove Liberty, Shag, and Toe since they are no longer necessary
+  select(-c(Toe, Liberty, Shag)) %>%
+  # Pivot dataframe back into long format
+  pivot_longer(
+    cols = c("Liberty Island Breach 1", "Liberty Island Breach 2", "Liberty Island Breach 3"),
+    names_to = "StationName",
+    values_to = "Conc"
+  )
 
-# 2017 sampling events
-  # Define Concentration values
-  OutSta_2017_c <- conc_clean2 %>% 
-    # Filter out the outlet stations
-    filter(
-      Year == 2017,
-      StationName %in% c(
-        "Liberty Cut below Stairsteps",
-        "Shag Slough below Stairsteps",
-        "Toe Drain at 1/2 Lisbon"
-      )
-    ) %>% 
-    # Pivot Conc by StationName to stack three stations next to each other
-    pivot_wider(
-      id_cols = -digits,
-      names_from = StationName, 
-      values_from = Conc
-    ) %>%
-    # Rename the StationNames to allow for averaging
-    rename(
-      Liberty = "Liberty Cut below Stairsteps",
-      Shag = "Shag Slough below Stairsteps",
-      Toe = "Toe Drain at 1/2 Lisbon"
-    ) %>% 
-    # Create a new variable for Little Holland and assign values
-    mutate(
-      "Little Holland" = if_else(
-        SamplingEvent != "Apr 11-12, 2017",
-        (Toe + Liberty)/2,
-        NULL  #only sampled Toe Drain on April 12
-      )
-    ) %>% 
-    # Create a new variable for Main Liberty and assign values
-    mutate(
-      "Main Liberty" = case_when(
-        #Sampling events with good mixing across the Bypass- take the average of Liberty Cut and Shag Slough
-        SamplingEvent %in% c("Jan 11-12, 2017", "Jan 31-Feb 1, 2017", "Feb 14-15, 2017", "Mar 1-2, 2017", "Mar 15-16, 2017") ~ (Liberty + Shag)/2,
-        #Sampling events when Shag Slough was much different- use the concentrations from Liberty Cut
-        SamplingEvent %in% c("Jan 24-25, 2017", "Mar 28-29, 2017", "Apr 25-26, 2017") ~ Liberty
-        #Only sampled Toe Drain on April 12, so not necessary to assign value for this event
-      )
-    ) %>% 
-    # Remove Liberty, Shag, and Toe since they are no longer necessary
-    select(-c(Shag, Liberty, Toe)) %>% 
-    # Pivot df back into long format
-    pivot_longer(
-      cols = c("Little Holland", "Main Liberty"),
-      names_to = "StationName",
-      values_to = "Conc"
-    ) %>% 
-    # Remove NA values
-    filter(!is.na(Conc))
-  
-  # Define significant digits for each new station
-    # Toe Drain at 1/2 Lisbon and Liberty Cut combination
-    OutSta_2017_d_ToeLib <- conc_clean2 %>% 
-      # Filter out the outlet stations
-      filter(
-        Year == 2017,
-        StationName %in% c(
-          "Liberty Cut below Stairsteps",
-          "Toe Drain at 1/2 Lisbon"
-        )
-      ) %>% 
-      group_by(SamplingEvent, Analyte) %>% 
-      summarize(digits = min(digits)) %>% 
-      ungroup()
-    
-    # Shag Slough and Liberty Cut combination
-    OutSta_2017_d_ShagLib <- conc_clean2 %>% 
-      # Filter out the outlet stations
-      filter(
-        Year == 2017,
-        StationName %in% c(
-          "Liberty Cut below Stairsteps",
-          "Shag Slough below Stairsteps"
-        )
-      ) %>% 
-      group_by(SamplingEvent, Analyte) %>% 
-      summarize(digits = min(digits)) %>% 
-      ungroup()
-    
-    # Just Liberty Cut
-    OutSta_2017_d_Lib <- conc_clean2 %>% 
-      # Filter out the outlet stations
-      filter(
-        Year == 2017,
-        StationName == "Liberty Cut below Stairsteps"
-      ) %>% 
-      select(SamplingEvent, Analyte, digits)
-  
-  # Join digits df's to the concentration df based on calculation method
-    # Little Holland
-    little_holland <- OutSta_2017_c %>% 
-      filter(StationName == "Little Holland") %>% 
-      left_join(OutSta_2017_d_ToeLib)
-    
-    # Main Liberty- good mixing events
-    main_lib_good_mix <- OutSta_2017_c %>% 
-      filter(
-        StationName == "Main Liberty",
-        SamplingEvent %in% c(
-          "Jan 11-12, 2017",
-          "Jan 31-Feb 1, 2017",
-          "Feb 14-15, 2017",
-          "Mar 1-2, 2017",
-          "Mar 15-16, 2017"
-        )
-      ) %>% 
-      left_join(OutSta_2017_d_ShagLib)
-    
-    # Main Liberty- Shag Slough much different
-    main_lib_shag_diff <- OutSta_2017_c %>% 
-      filter(
-        StationName == "Main Liberty",
-        SamplingEvent %in% c(
-          "Jan 24-25, 2017", 
-          "Mar 28-29, 2017", 
-          "Apr 25-26, 2017"
-        )
-      ) %>% 
-      left_join(OutSta_2017_d_Lib)
+# Define significant digits for each new station
+OutSta_2016_d <- all_conc_clean2 %>%
+  # Filter out the outlet stations
+  filter(
+    Year == 2016,
+    StationName %in% c(
+      "Liberty Cut below Stairsteps",
+      "Shag Slough below Stairsteps",
+      "Toe Drain at 1/2 Lisbon"
+    )
+  ) %>%
+  # Restructure the dataframe
+  pivot_wider(
+    id_cols = -Conc,
+    names_from = StationName,
+    values_from = digits
+  ) %>%
+  rename(
+    Liberty = "Liberty Cut below Stairsteps",
+    Shag = "Shag Slough below Stairsteps",
+    Toe = "Toe Drain at 1/2 Lisbon"
+  ) %>%
+  # Create new variables for Liberty Island Breach locations
+  mutate(
+    "Liberty Island Breach 1" = Shag,  #this breach is closest to the Shag Slough site
+    "Liberty Island Breach 2" = Liberty,  #this breach is closest to the Liberty Cut site
+    "Liberty Island Breach 3" = Toe  #this breach is closest to the Toe Drain at 1/2 Lisbon site
+  ) %>%
+  # Remove Liberty, Shag, and Toe since they are no longer necessary
+  select(-c(Toe, Liberty, Shag)) %>%
+  # Pivot dataframe back into long format
+  pivot_longer(
+    cols = c("Liberty Island Breach 1", "Liberty Island Breach 2", "Liberty Island Breach 3"),
+    names_to = "StationName",
+    values_to = "digits"
+  )
+
+# Join dataframes with concentrations and significant digits together
+OutSta_2016 <- left_join(OutSta_2016_c, OutSta_2016_d)
+
+# Define concentration values for the outlets for the 2017 sampling events
+OutSta_2017_c <- all_conc_clean2 %>%
+  # Filter out the outlet stations
+  filter(
+    Year == 2017,
+    StationName %in% c(
+      "Liberty Cut below Stairsteps",
+      "Shag Slough below Stairsteps",
+      "Toe Drain at 1/2 Lisbon"
+    )
+  ) %>%
+  # Restructure the dataframe
+  pivot_wider(
+    id_cols = -digits,
+    names_from = StationName,
+    values_from = Conc
+  ) %>%
+  rename(
+    Liberty = "Liberty Cut below Stairsteps",
+    Shag = "Shag Slough below Stairsteps",
+    Toe = "Toe Drain at 1/2 Lisbon"
+  ) %>%
+  # Create a new variable for Little Holland and assign values
+  mutate(
+    "Little Holland" = if_else(
+      SamplingEvent != "Apr 11-12, 2017",
+      (Toe + Liberty)/2,
+      NULL  #only sampled Toe Drain at 1/2 Lisbon on April 12, 2017
+    )
+  ) %>%
+  # Create a new variable for Main Liberty and assign values
+  mutate(
+    "Main Liberty" = case_when(
+      # For sampling events with good mixing across the Bypass use the average of Liberty Cut and Shag Slough
+      SamplingEvent %in% c("Jan 11-12, 2017", "Jan 31-Feb 1, 2017", "Feb 14-15, 2017", "Mar 1-2, 2017", "Mar 15-16, 2017") ~ (Liberty + Shag)/2,
+      # For sampling events when Shag Slough was much different use the concentrations from Liberty Cut
+      SamplingEvent %in% c("Jan 24-25, 2017", "Mar 28-29, 2017", "Apr 25-26, 2017") ~ Liberty
+      # Only sampled Toe Drain on April 12, so not necessary to assign value for this event
+    )
+  ) %>%
+  # Remove Liberty, Shag, and Toe since they are no longer necessary
+  select(-c(Shag, Liberty, Toe)) %>%
+  # Pivot dataframe back into long format
+  pivot_longer(
+    cols = c("Little Holland", "Main Liberty"),
+    names_to = "StationName",
+    values_to = "Conc"
+  ) %>%
+  # Remove NA values
+  filter(!is.na(Conc))
+
+# Define significant digits for each new station
+# Toe Drain at 1/2 Lisbon and Liberty Cut combination
+OutSta_2017_d_ToeLib <- all_conc_clean2 %>%
+  # Filter out the outlet stations
+  filter(
+    Year == 2017,
+    StationName %in% c(
+      "Liberty Cut below Stairsteps",
+      "Toe Drain at 1/2 Lisbon"
+    )
+  ) %>%
+  group_by(SamplingEvent, Analyte) %>%
+  summarize(digits = min(digits)) %>%
+  ungroup()
+
+# Shag Slough and Liberty Cut combination
+OutSta_2017_d_ShagLib <- all_conc_clean2 %>%
+  # Filter out the outlet stations
+  filter(
+    Year == 2017,
+    StationName %in% c(
+      "Liberty Cut below Stairsteps",
+      "Shag Slough below Stairsteps"
+    )
+  ) %>%
+  group_by(SamplingEvent, Analyte) %>%
+  summarize(digits = min(digits)) %>%
+  ungroup()
+
+# Just Liberty Cut
+OutSta_2017_d_Lib <- all_conc_clean2 %>%
+  # Filter out the outlet stations
+  filter(
+    Year == 2017,
+    StationName == "Liberty Cut below Stairsteps"
+  ) %>%
+  select(SamplingEvent, Analyte, digits)
+
+# Join digits dataframes to the concentration dataframe based on calculation method
+# Little Holland
+little_holland <- OutSta_2017_c %>%
+  filter(StationName == "Little Holland") %>%
+  left_join(OutSta_2017_d_ToeLib)
+
+# Main Liberty- good mixing events
+main_lib_good_mix <- OutSta_2017_c %>%
+  filter(
+    StationName == "Main Liberty",
+    SamplingEvent %in% c(
+      "Jan 11-12, 2017",
+      "Jan 31-Feb 1, 2017",
+      "Feb 14-15, 2017",
+      "Mar 1-2, 2017",
+      "Mar 15-16, 2017"
+    )
+  ) %>%
+  left_join(OutSta_2017_d_ShagLib)
+
+# Main Liberty- Shag Slough much different
+main_lib_shag_diff <- OutSta_2017_c %>%
+  filter(
+    StationName == "Main Liberty",
+    SamplingEvent %in% c(
+      "Jan 24-25, 2017",
+      "Mar 28-29, 2017",
+      "Apr 25-26, 2017"
+    )
+  ) %>%
+  left_join(OutSta_2017_d_Lib)
   
 # Bind all df's together
-conc_clean3 <-
+all_conc_clean_3 <-
   bind_rows(
-    conc_clean2,
+    all_conc_clean2,
     OutSta_2016,
     little_holland,
     main_lib_good_mix,
@@ -389,7 +380,7 @@ conc_clean3 <-
   )
 
 # Create vectors to identify Inlet and Outlet stations
-inlet.sta <- c(
+inlet_sta <- c(
   "CCSB- Low Flow Channel",
   "CCSB- Overflow Weir",
   "Fremont Weir",
@@ -398,7 +389,7 @@ inlet.sta <- c(
   "Sac River above the Sacramento Weir"
 )
 
-outlet.sta <- c(
+outlet_sta <- c(
   "Liberty Cut below Stairsteps",
   "Liberty Island Breach 1",
   "Liberty Island Breach 2",
@@ -410,11 +401,11 @@ outlet.sta <- c(
 )
 
 # Add a new variable LocType to identify inlet, outlet, and Below Liberty stations
-conc_clean_f <- conc_clean3 %>% 
+all_conc_clean_f <- all_conc_clean_3 %>% 
   mutate(
     LocType = case_when(
-      StationName %in% inlet.sta ~ "Inlet",
-      StationName %in% outlet.sta ~ "Outlet",
+      StationName %in% inlet_sta ~ "Inlet",
+      StationName %in% outlet_sta ~ "Outlet",
       TRUE ~ "BelowLiberty"
     )
   )
@@ -422,10 +413,11 @@ conc_clean_f <- conc_clean3 %>%
 # Clean up
 rm(
   all_conc,
-  conc_clean,
-  conc_clean1,
-  conc_clean2,
-  conc_clean3,
+  all_conc_clean,
+  all_conc_clean1,
+  all_conc_clean2,
+  all_conc_clean_3,
+  conc_data_clean,
   little_holland,
   main_lib_good_mix,
   main_lib_shag_diff,
@@ -441,20 +433,8 @@ rm(
 
 # 2. Flow Data ------------------------------------------------------------
 
-# Dataset is on SharePoint site for the Open Water Final Report
-# Define path on SharePoint site for data
-sharepoint_path <- normalizePath(
-  file.path(
-    Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/DWR Documents - Open Water Final Report - Documents/Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final"
-  )
-)
-
-# Import Flow data
-flow_data <- read_csv(paste0(sharepoint_path, "/DailyAvgFlows_SE.csv"))
-
-# Sum the CCSB flows for the sampling events where we didn't collect the Low Flow Channel
-ccsb.flow <- flow_data %>% 
+# Sum the CCSB flows for the sampling events when we didn't collect samples at the Low Flow Channel
+ccsb_flow <- daily_flow_data_se %>% 
   # Filter out CCSB stations
   filter(
     str_detect(StationName, "^CCSB") &
@@ -464,55 +444,55 @@ ccsb.flow <- flow_data %>%
   group_by(SamplingEvent, Year, LocType) %>% 
   summarize("CCSB- Overflow Weir" = sum(Flow)) %>%
   ungroup() %>% 
-  # Pivot df back into long format
+  # Pivot dataframe back into long format
   pivot_longer(
     cols = "CCSB- Overflow Weir",
     names_to = "StationName",
     values_to = "Flow"
   )
 
-# Add the CCSB flow data back to the FlowData df
-flow_data1 <- flow_data %>% 
-  # Remove the CCSB Stations in FlowData df to prevent duplicates
+# Add the CCSB flow data back to the daily flow data dataframe
+daily_flow_data1 <- daily_flow_data_se %>% 
+  # Remove the CCSB Stations to prevent duplicates
   filter(
     !(
       str_detect(StationName, "^CCSB") &
       !SamplingEvent %in% c("Mar 28-29, 2017", "Apr 11-12, 2017", "Apr 25-26, 2017")
     )
   ) %>%
-  # Bind all df back together
-  bind_rows(ccsb.flow)
+  # Add summed CCSB flows
+  bind_rows(ccsb_flow)
 
 # Clean up
-rm(ccsb.flow)
+rm(ccsb_flow)
 
 # Sum flows for all outlet stations for April 11-12 sampling event and assign to 1/2 Lisbon station
-OutFlow_Apr12 <- flow_data1 %>% filter(SamplingEvent == "Apr 11-12, 2017", LocType == "Outlet")
+OutFlow_Apr12 <- daily_flow_data1 %>% filter(SamplingEvent == "Apr 11-12, 2017", LocType == "Outlet")
 Flow_Lis_Apr12 <- sum(OutFlow_Apr12$Flow)
 OutFlow_Apr12 <- OutFlow_Apr12 %>% filter(StationName == "Toe Drain at 1/2 Lisbon")
 OutFlow_Apr12$Flow <- Flow_Lis_Apr12
 
-# Add the April 12 outflow data back to the FlowData df
-flow_data_f <- flow_data1 %>% 
+# Add the April 12 outflow data back to the flow data
+daily_flow_data_f <- daily_flow_data1 %>% 
   # Remove the Outlet stations for the April 11-12 sampling event in FlowData df to prevent duplicates
   filter(!(SamplingEvent == "Apr 11-12, 2017" & LocType == "Outlet")) %>%
   # Bind all df back together
   bind_rows(OutFlow_Apr12)
 
 # Clean up
-rm(flow_data, flow_data1, OutFlow_Apr12, Flow_Lis_Apr12)
+rm(daily_flow_data1, OutFlow_Apr12, Flow_Lis_Apr12)
 
 
 # 2.1 Create a new Flow df for the balanced flows approach ----------------
 # Make a new df that summarizes the total input and output flows for each sampling event
-flow_summ <- flow_data_f %>%
+flow_summ <- daily_flow_data_f %>%
   filter(LocType != "Below Liberty") %>% 
   group_by(SamplingEvent, Year, LocType) %>% 
   summarize(TotalFlow = sum(Flow)) %>% 
   ungroup() %>% 
   pivot_wider(names_from = LocType, values_from = TotalFlow)
 
-OutFlow <- flow_data_f %>% 
+OutFlow <- daily_flow_data_f %>% 
   # Pull out the flow data for outlet locations
   filter(LocType == "Outlet") %>% 
   # Join summary df
@@ -525,7 +505,7 @@ OutFlow <- flow_data_f %>%
   rename(Flow = FlowB)
 
 # Add the adjusted outflow data back to the inflow data
-flow_data_bal <- flow_data_f %>% 
+flow_data_bal <- daily_flow_data_f %>% 
   # Remove the flow data for outlet locations to prevent duplicates
   filter(LocType != "Outlet") %>%
   # Bind OutFlow to FlowData
@@ -540,7 +520,7 @@ rm(OutFlow)
 # I decided to not calculate loads for Cache and Miner Sloughs for the 2016 sampling event since
 # the Below Liberty flows during this flood event were much lower than the sum of the input flows
 
-conc_clean_f <- conc_clean_f %>%
+all_conc_clean_f <- all_conc_clean_f %>%
   filter(
     !(
       Year == 2016 &
@@ -551,25 +531,25 @@ conc_clean_f <- conc_clean_f %>%
     )
   )
 
-# Split ConcData into 3 df based on LocType to calculate loads
-conc_clean_split <- conc_clean_f %>% split(.$LocType)
+# Split concentration data into 3 df based on LocType to calculate loads
+all_conc_clean_split <- all_conc_clean_f %>% split(.$LocType)
 
 # Calculate loads
 loads <- 
   list(
-    Inlet = conc_clean_split$Inlet,
-    Outlet.SCHISM = conc_clean_split$Outlet,
-    Outlet.Bal = conc_clean_split$Outlet,
-    BelowLib = conc_clean_split$BelowLiberty
+    Inlet = all_conc_clean_split$Inlet,
+    Outlet.SCHISM = all_conc_clean_split$Outlet,
+    Outlet.Bal = all_conc_clean_split$Outlet,
+    BelowLib = all_conc_clean_split$BelowLiberty
   ) %>% 
   map(~select(.x, -LocType)) %>% 
   map_at(
     c("Inlet", "Outlet.SCHISM", "BelowLib"), 
-    ~ left_join(.x, flow_data_f)
+    ~left_join(.x, daily_flow_data_f)
   ) %>% 
   map_at(
     c("Outlet.Bal"), 
-    ~ left_join(.x, flow_data_bal)
+    ~left_join(.x, flow_data_bal)
   ) %>% 
   bind_rows(.id = "Calc.type") %>% 
   # Create a new variable to calculate loads
@@ -583,7 +563,7 @@ loads <-
   )
 
 # Resolve significant digits for Cache and Miner Sloughs
-conc_digits_bl <- conc_clean_f %>% 
+conc_digits_bl <- all_conc_clean_f %>% 
   filter(str_detect(StationName, "^Cache|^Miner")) %>% 
   group_by(SamplingEvent, Analyte) %>% 
   summarize(digits = min(digits)) %>% 
@@ -609,7 +589,7 @@ loads_bl <- loads %>%
 
 # Calculate Below Liberty Island loads using a balanced flows approach (Below Liberty flow = sum of input flows)
 # Make a new df that summarizes the Below Liberty Island flows for each sampling event
-flow_summ_bl <- flow_data_f %>% 
+flow_summ_bl <- daily_flow_data_f %>% 
   filter(LocType == "Below Liberty") %>% 
   select(-LocType) %>% 
   pivot_wider(names_from = StationName, values_from = Flow) %>% 
@@ -645,27 +625,8 @@ loads_list <- loads_list %>%
   map(~mutate(.x, Load = signif(Load, digits = digits)))
 
 # Clean up
-rm(conc_clean_split, flow_summ_bl, loads, loads_bl, loads_bl_bal, conc_digits_bl)
+rm(all_conc_clean_split, flow_summ_bl, loads, loads_bl, loads_bl_bal, conc_digits_bl)
 
-# Export calculated loads
-# Keep the Outlet and Below Liberty loads using the Balanced approach for both
-loads_f <- 
-  bind_rows(loads_list$Inlet, loads_list$Outlet.Bal, loads_list$BelowLib.Bal) %>% 
-  select(
-    SamplingEvent,
-    Year,
-    StationName,
-    LocType,
-    Analyte,
-    Load,
-    LoadUnits,
-    digits
-  )
-  
-# This .csv will be used to create plots and summary statistics
-loads_f %>% write_excel_csv("All_YB_Loads.csv", na = "")  # moved to SharePoint
-
-# THE REMAINDER OF THIS SCRIPT HAS NOT BEEN UPDATED
 
 # 4. Compare the two load calculation approaches -----------------------------
 
@@ -674,7 +635,7 @@ loads_f %>% write_excel_csv("All_YB_Loads.csv", na = "")  # moved to SharePoint
 
 # Summarize the outlet flows for the two approaches- just 2017 events
   # SCHISM
-  FlowSCHISM.Summ <- FlowSummary %>% 
+  flowSCHISM_summ <- flow_summ %>% 
     filter(Year == 2017) %>%
     # Remove Inlet flows
     select(-Inlet) %>% 
@@ -683,7 +644,7 @@ loads_f %>% write_excel_csv("All_YB_Loads.csv", na = "")  # moved to SharePoint
     mutate(Approach = "SCHISM")
   
   # Balanced
-  FlowBalanced.Summ <- FlowDataBalanced %>% 
+  flow_bal_summ <- flow_data_bal %>% 
     filter(
       Year == 2017,
       LocType == "Outlet"
@@ -696,8 +657,8 @@ loads_f %>% write_excel_csv("All_YB_Loads.csv", na = "")  # moved to SharePoint
     mutate(Approach = "Balanced")
   
 # Create a summary df by binding the two summary dfs together
-FlowSummary <- 
-  bind_rows(FlowSCHISM.Summ, FlowBalanced.Summ) %>%
+flow_summ_all <- 
+  bind_rows(flowSCHISM_summ, flow_bal_summ) %>%
   # Pivot by Approach
   pivot_wider(names_from = Approach, values_from = OutletFlow) %>% 
   # Create new variables for the differences and the % differences
@@ -714,22 +675,9 @@ FlowSummary <-
   # Modify PerDiff variable
   mutate(PerDiff = as.character(paste0(PerDiff, "%"))) %>%  #convert PerDiff to character data type
   mutate(PerDiff = if_else(Approach == "SCHISM", PerDiff, NULL)) %>% 
-  # Convert variables in dataframe to apply plot order
+  # Convert variables to factor to apply plot order
+  conv_fact_samplingevent() %>% 
   mutate(
-    SamplingEvent = factor(
-      SamplingEvent,
-      levels = c(
-        "Jan 11-12",
-        "Jan 24-25",
-        "Jan 31-Feb 1",
-        "Feb 14-15",
-        "Mar 1-2",
-        "Mar 15-16",
-        "Mar 28-29",
-        "Apr 11-12",
-        "Apr 25-26"
-      )
-    ),
     Approach = factor(
       Approach,
       levels = c(
@@ -741,47 +689,49 @@ FlowSummary <-
   )
 
 # Plot Outlet flow comparison
-FlowSummary %>%
-  ggplot(
-    aes(
-      x = SamplingEvent,  #barplot by Sampling Event
-      y = OutletFlow,
-      fill = Approach,  #make each Approach a different fill color
-      label = PerDiff  #label plots with Percent Differences
-    )
-  ) +   
-  geom_col(position = "dodge") + 
-  geom_text(position = position_dodge(width = 0), size = 3, vjust = -1) +
-  labs(
-    title = "Comparison Barplot for Outlet Flows used in two different load calculation approaches",
-    subtitle = "Labels are the percent differences between the outlet flows used in the two load calculation approaches",
-    caption = "Difference is Balanced - SCHISM; Percent Difference is (Balanced-SCHISM)/SCHISM",
-    x = "Sampling Event",
-    y = "Daily Average Flow (cfs)"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  #x-axis labels at 45 degrees
+pdf(file = '2017_SE_Output_Flow_comparison.pdf', w = 11, h = 8.5)
+  flow_summ_all %>%
+    ggplot(
+      aes(
+        x = SamplingEvent,  #barplot by Sampling Event
+        y = OutletFlow,
+        fill = Approach,  #make each Approach a different fill color
+        label = PerDiff  #label plots with Percent Differences
+      )
+    ) +   
+    geom_col(position = "dodge") + 
+    geom_text(position = position_dodge(width = 0), size = 3, vjust = -1) +
+    labs(
+      title = "Comparison Barplot for Outlet Flows used in two different load calculation approaches",
+      subtitle = "Labels are the percent differences between the outlet flows used in the two load calculation approaches",
+      caption = "Difference is Balanced - SCHISM; Percent Difference is (Balanced-SCHISM)/SCHISM",
+      x = "Sampling Event",
+      y = "Daily Average Flow (cfs)"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  #x-axis labels at 45 degrees
+dev.off()
 
 # Clean up
-rm(FlowData, FlowDataBalanced, FlowSCHISM.Summ, FlowBalanced.Summ, FlowSummary)
+rm(daily_flow_data_f, flow_data_bal, flow_summ, flow_summ_all, flow_bal_summ, flowSCHISM_summ)
 
 
 # 4.2 Outlet Loads --------------------------------------------------------
 # using either the SCHISM flows or the Balanced flows approach for the outlet loads
 
 # Summarize Loads for each approach
-Loads.Summ <- Loads.list %>% 
+loads_summ <- loads_list %>% 
   # Only look at 2017
   map(~filter(.x, Year == 2017)) %>% 
   # summarize by SamplingEvent and Analyte, then sum(Load)
   map(~group_by(.x, LocType, SamplingEvent, Analyte, LoadUnits)) %>% 
   map(~summarize(.x, TotalLoad = round(sum(Load), 1))) %>%   #round to the tenth's place
-  map(~ungroup(.x)) 
+  map(ungroup) 
 
 # Create a df used to plot comparisons between the two load calculation approaches
-Loads.comp.io <- 
+loads_comp_in_out <- 
   list(
-    SCHISM = bind_rows(Loads.Summ$Inlet, Loads.Summ$Outlet.SCHISM),
-    Balanced = bind_rows(Loads.Summ$Inlet, Loads.Summ$Outlet.Bal)
+    SCHISM = bind_rows(loads_summ$Inlet, loads_summ$Outlet.SCHISM),
+    Balanced = bind_rows(loads_summ$Inlet, loads_summ$Outlet.Bal)
   ) %>% 
   # Pivot by LocType and calculate net loads for each sampling event
   map(~pivot_wider(.x, names_from = LocType, values_from = TotalLoad)) %>% 
@@ -797,22 +747,9 @@ Loads.comp.io <-
   ) %>% 
   # bind two elements together into a df
   bind_rows(.id = "Approach") %>% 
-  # Convert variables in dataframe to apply plot order
+  # Convert variables to factor to apply plot order
+  conv_fact_samplingevent() %>% 
   mutate(
-    SamplingEvent = factor(
-      SamplingEvent,
-      levels = c(
-        "Jan 11-12",
-        "Jan 24-25",
-        "Jan 31-Feb 1",
-        "Feb 14-15",
-        "Mar 1-2",
-        "Mar 15-16",
-        "Mar 28-29",
-        "Apr 11-12",
-        "Apr 25-26"
-      )
-    ),
     LoadType = factor(
       LoadType,
       levels = c(
@@ -831,7 +768,7 @@ Loads.comp.io <-
   )
 
 # Create a new df with calcuated RPD's between approaches
-LoadsRPD <- Loads.comp.io %>%  
+loads_rpd <- loads_comp_in_out %>%  
   pivot_wider(names_from = Approach, values_from = Load) %>% 
   mutate(RPD = round(abs(SCHISM - Balanced)/((abs(SCHISM) + abs(Balanced))/2), 3) * 100) %>% 
   mutate(RPD = as.character(paste0(RPD, "%"))) %>%  #convert RPD to character data type
@@ -839,15 +776,15 @@ LoadsRPD <- Loads.comp.io %>%
   mutate(RPD = if_else(RPD != "NaN%", RPD, NULL)) %>%   #remove one NaN value
   select(-c(LoadUnits, SCHISM, Balanced))
 
-# Join LoadsRPD df to LoadsSummary df to include RPD calculations in the plots
-Loads.comp.io <- left_join(Loads.comp.io, LoadsRPD) %>% 
+# Join loads_rpd df to loads_comp_in_out df to include RPD calculations in the plots
+loads_comp_in_out <- left_join(loads_comp_in_out, loads_rpd) %>% 
   # Remove the RPD values for the Balanced approach rows to prevent duplicate labels in the plot
   mutate(RPD = if_else(Approach == "SCHISM", RPD, NULL))
 
 # Plot the two approaches together for each analyte- RPD's as labels
-pdf(file = 'Loads/2017_Output_Load_Calc_comparison.pdf', w=11, h=8.5)
+pdf(file = '2017_Output_Load_Calc_comparison.pdf', w = 11, h = 8.5)
   # Comparison Barplots for each Analyte separated by LoadType
-  Loads.comp.io %>% group_by(Analyte) %>% do(plot={
+  loads_comp_in_out %>% group_by(Analyte) %>% do(plot={
     print(.$Analyte[1])
     p = ggplot(
       data = .,
@@ -880,9 +817,9 @@ pdf(file = 'Loads/2017_Output_Load_Calc_comparison.pdf', w=11, h=8.5)
 dev.off()
 
 # Plot the two approaches together for each analyte- loads as labels
-pdf(file = 'Loads/2017_Output_Load_Calc_comparison2.pdf', w=11, h=8.5)
+pdf(file = '2017_Output_Load_Calc_comparison2.pdf', w = 11, h = 8.5)
   # Comparison Barplots for each Analyte separated by LoadType
-  Loads.comp.io %>% group_by(Analyte) %>% do(plot={
+  loads_comp_in_out %>% group_by(Analyte) %>% do(plot={
     print(.$Analyte[1])
     p = ggplot(
       data = .,
@@ -918,7 +855,7 @@ dev.off()
 
 # Plot just the net loads for the two approaches and their difference
 # Add a few items to the LoadsSummary df for these plots
-Loads.comp.io.mod <- Loads.comp.io %>% 
+net_loads_comp_in_out <- loads_comp_in_out %>% 
   # Just keep the Net Load Calculations
   filter(LoadType == "NetLoad") %>% 
   # Remove a couple of unnecessary variables
@@ -957,9 +894,9 @@ Loads.comp.io.mod <- Loads.comp.io %>%
   )
 
 # Create Load plots
-pdf(file = "Loads/2017_Net_Loads_comparison.pdf", w = 11, h = 8.5)
+pdf(file = "2017_Net_Loads_comparison.pdf", w = 11, h = 8.5)
   # Comparison Barplots of the Net Loads for each AnalyteGroup 
-  Loads.comp.io.mod %>% group_by(AnalyteGroup) %>% do(plot={
+  net_loads_comp_in_out %>% group_by(AnalyteGroup) %>% do(plot={
     print(.$AnalyteGroup[1])
     p = ggplot(
       data = .,
@@ -985,7 +922,7 @@ pdf(file = "Loads/2017_Net_Loads_comparison.pdf", w = 11, h = 8.5)
 dev.off()
 
 # Clean up
-rm(Loads.comp.io, Loads.comp.io.mod, LoadsRPD)
+rm(loads_comp_in_out, net_loads_comp_in_out, loads_rpd)
 
 # *****************
 # Outlet loads:
@@ -1001,10 +938,10 @@ rm(Loads.comp.io, Loads.comp.io.mod, LoadsRPD)
 # using raw vs. scaled (adjusted using the sum of Inlet flows) loads for Below Liberty Island
   
 # Calculate net loads (Below Liberty - Outlet) for both load calculation approaches
-Loads.comp.bl <-
+loads_comp_bl <-
   list(
-    Raw = bind_rows(Loads.Summ$Outlet.Bal, Loads.Summ$BelowLib),
-    Balanced = bind_rows(Loads.Summ$Outlet.Bal, Loads.Summ$BelowLib.Bal)
+    Raw = bind_rows(loads_summ$Outlet.Bal, loads_summ$BelowLib),
+    Balanced = bind_rows(loads_summ$Outlet.Bal, loads_summ$BelowLib.Bal)
   ) %>% 
   # Remove one event when we didn't collect samples at Cache and Miner Sloughs
   map(~filter(.x, SamplingEvent != "Apr 11-12")) %>% 
@@ -1014,27 +951,13 @@ Loads.comp.bl <-
   map(~mutate(.x, NetLoad = BelowLiberty - Outlet)) %>% 
   # bind two elements together into a df
   bind_rows(.id = "Approach") %>% 
-  # Convert variables in dataframe to apply plot order
-  mutate(
-    SamplingEvent = factor(
-      SamplingEvent,
-      levels = c(
-        "Jan 11-12",
-        "Jan 24-25",
-        "Jan 31-Feb 1",
-        "Feb 14-15",
-        "Mar 1-2",
-        "Mar 15-16",
-        "Mar 28-29",
-        "Apr 25-26"
-      )
-    )
-  ) %>% 
+  # Convert variables to factor to apply plot order
+  conv_fact_samplingevent() %>% 
   filter(!is.na(NetLoad))
 
 # Plot the net loads for the two approaches
-pdf(file = "Loads/BelowLiberty_Net_Loads_comparison.pdf", w = 11, h = 8.5)
-  Loads.comp.bl %>% group_by(Analyte) %>% do(plot={
+pdf(file = "BelowLiberty_Net_Loads_comparison.pdf", w = 11, h = 8.5)
+  loads_comp_bl %>% group_by(Analyte) %>% do(plot={
     print(.$Analyte[1])
     p = ggplot(
       data = .,
@@ -1056,7 +979,7 @@ pdf(file = "Loads/BelowLiberty_Net_Loads_comparison.pdf", w = 11, h = 8.5)
 dev.off()
 
 # Clean up
-rm(Loads.comp.bl)
+rm(loads_comp_bl)
 
 # *****************
 # Below Liberty Island loads:
@@ -1064,86 +987,4 @@ rm(Loads.comp.bl)
   # for the 2017 flood from Jan-May was very close to balanced, I decided that the Balanced or scaled approach 
   # is the best way to calculate the Below Liberty loads
 # *****************
-
-
-# 5. Export calculated loads -------------------------------------------------
-
-# Keep the Outlet and Below Liberty loads using the Balanced approach for both
-Loads.final <- 
-  bind_rows(Loads.list$Inlet, Loads.list$Outlet.Bal, Loads.list$BelowLib.Bal) %>% 
-  select(
-    SamplingEvent,
-    Year,
-    StationName,
-    Analyte,
-    Conc,
-    Units,
-    Flow,
-    LocType,
-    Load,
-    LoadUnits
-  ) %>% 
-  rename(ConcUnits = Units) %>% 
-  mutate(SamplingEvent = paste0(SamplingEvent, ", ", Year)) %>% 
-  mutate(
-    SamplingEvent = factor(
-      SamplingEvent,
-      levels = c(
-        "Dec 22-23, 2014",
-        "Mar 15-16, 2016",
-        "Jan 11-12, 2017",
-        "Jan 24-25, 2017",
-        "Jan 31-Feb 1, 2017",
-        "Feb 14-15, 2017",
-        "Mar 1-2, 2017",
-        "Mar 15-16, 2017",
-        "Mar 28-29, 2017",
-        "Apr 11-12, 2017",
-        "Apr 25-26, 2017"
-      )
-    )
-  ) %>% 
-  arrange(SamplingEvent, LocType, StationName, Analyte)
-
-# Export Loads to be stored in a spreadsheet
-Loads.final %>% write_excel_csv("Loads/All_YB_Loads-R.csv", na = "")  # moved to SharePoint
-# This .csv will be used to create plots and summary statistics
-
-# Restructure and export Inlet loads to be placed in a summary spreadsheet
-Loads.final %>% 
-  filter(LocType == "Inlet") %>% 
-  select(SamplingEvent, StationName, Analyte, Load) %>% 
-  pivot_wider(names_from = StationName, values_from = Load) %>% 
-  write_excel_csv("InletLoads.csv", na = "0")
-
-# Restructure and export Outlet and Below Liberty loads to be placed in a summary spreadsheet
-Loads.final %>% 
-  filter(LocType != "Inlet") %>%
-  group_by(SamplingEvent, LocType, Analyte) %>% 
-  summarize(TotalLoad = sum(Load)) %>% 
-  ungroup() %>% 
-  pivot_wider(names_from = LocType, values_from = TotalLoad) %>% 
-  write_excel_csv("Outlet_BL_Loads.csv", na = "")
-
-# Summarize loads by LocType and export to be placed in a summary spreadsheet
-Loads.final %>% 
-  group_by(LocType, SamplingEvent, Analyte) %>% 
-  summarize(TotalLoad = sum(Load)) %>% 
-  ungroup() %>% 
-  pivot_wider(names_from = Analyte, values_from = TotalLoad) %>% 
-  write_excel_csv("Total_Loads.csv", na = "")
-
-Loads.total <- Loads.final %>% 
-  group_by(LocType, SamplingEvent, Year, Analyte, LoadUnits) %>% 
-  summarize(TotalLoad = sum(Load)) %>% 
-  ungroup()
-
-Loads.total %>% write_excel_csv("Total_Loads2.csv")
-
-# Bring in Summary Stats script
-source("../../General_R_Code/Summary_Stats_1or2_Groups.R")
-
-SummStat(Loads.total, TotalLoad, LocType, Analyte) %>% 
-  write_excel_csv("Total_Loads_summ.csv")
-
 

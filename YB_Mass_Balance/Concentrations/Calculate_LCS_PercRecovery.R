@@ -10,7 +10,7 @@ library(readxl)
 sharepoint_path <- normalizePath(
   file.path(
     Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/DWR Documents - Open Water Final Report - Documents/Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data"
+    "California Department of Water Resources/DWR Documents - Open Water Final Report - Documents/Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Raw"
   )
 )
   
