@@ -146,6 +146,6 @@ comb_param_clean %>% write_excel_csv("YB_Inlet-Outlet_CombinedParameters.csv")
 # This file was added to the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_CombinedParameters.xlsx
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as comb_param_calc
 

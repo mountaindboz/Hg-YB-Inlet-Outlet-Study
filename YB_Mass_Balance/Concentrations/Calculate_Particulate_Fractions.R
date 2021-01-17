@@ -79,6 +79,6 @@ conc_part %>% write_excel_csv("Particulate_Conc.csv")
 # This file was added to the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/Particulate_Conc.csv
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as part_conc_calc
 

@@ -362,7 +362,7 @@ lab_rep_data_exp %>% write_excel_csv("LabReplicates.csv", na = "")
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/LabReplicates.csv
 # This data is also in the "Lab Replicates" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
 # spreadsheet in the same location on the SharePoint site
-# Redundant files are in M:\Data\Inlet-Outlet_Final
+# Redundant files are in M:/YB_Inlet-Outlet_Study/Data_Final
 
 # Modify the lab_rep_data df to be added back to no lab reps
 lab_rep_data_mod <- lab_rep_data %>% 
@@ -400,7 +400,7 @@ all_data1 %>%
 # "Lab Methods" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Conc_QA_Data.xlsx
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
   
 # Export a .csv file for Lab QA batches
 all_data1 %>%
@@ -410,7 +410,7 @@ all_data1 %>%
 # "Lab QA Batches" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Conc_QA_Data.xlsx
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 
 # Export a .csv file for Analysis dates for Lab QA batches
 all_data1 %>%
@@ -424,7 +424,7 @@ all_data1 %>%
 # "Analysis Dates" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Inlet-Outlet_Conc_QA_Data.xlsx
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 
 # Remove a few QA related variables
 all_data1 <- all_data1 %>% select(-c(LabBatch, AnalysisDate, Method))
@@ -543,7 +543,7 @@ field_dups_all_exp %>%  write_excel_csv("FieldDuplicates.csv", na = "")
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/FieldDuplicates.csv
 # This data is also in the "Field Duplicates" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
 # spreadsheet in the same location on the SharePoint site
-# Redundant files are in M:\Data\Inlet-Outlet_Final
+# Redundant files are in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as qa_field_dups
   
 # Modify the field_dups_all df to be added back to no field dups
@@ -674,7 +674,7 @@ comp_grab_all_exp %>% write_excel_csv("CompanionGrabSamples.csv", na = "")
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/CompanionGrabSamples.csv
 # This data is also in the "Companion Grab Samples" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
 # spreadsheet in the same location on the SharePoint site
-# Redundant files are in M:\Data\Inlet-Outlet_Final
+# Redundant files are in M:/YB_Inlet-Outlet_Study/Data_Final
 
 # Decided to use Companion Grab samples to represent the actual values since they were 
 # collected by hand which is how all other samples were collected from the boat. The 
@@ -834,7 +834,7 @@ blank_samples %>% write_excel_csv("BlankSamples.csv", na = "")
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/BlankSamples.csv
 # This data is also in the "Field and Filter Blanks" sheet in the "YB_Inlet-Outlet_Conc_QA_Data.xlsx"
 # spreadsheet in the same location on the SharePoint site
-# Redundant files are in M:\Data\Inlet-Outlet_Final
+# Redundant files are in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as qa_field_blanks
 
 # Clean up
@@ -980,6 +980,6 @@ all_data8 %>%
 # This final copy of the Lab concentration data for the Yolo Bypass Inlet-Outlet Study
 # was added to the SharePoint site for the Open Water Final Report in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/NormalSamples.csv
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as conc_data
 

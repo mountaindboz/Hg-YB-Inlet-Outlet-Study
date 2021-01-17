@@ -412,7 +412,7 @@ flow.all %>% write_excel_csv("DailyAvgFlows_All.csv")
 # "All Flows" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Daily_Avg_Flows.xlsx
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as daily_flow_data_all
 
 # Pull out daily average flow data for just the sampling events -----------
@@ -488,6 +488,6 @@ flow.se %>% write_excel_csv("DailyAvgFlows_SE.csv")
 # "Sampling Event Flows" sheet. This spreadsheet is on the SharePoint site for the Open Water Final Report 
 # in the following location: 
 # /Technical Appendices/Technical Appendix-B_Inlet-Outlet/Data/Final/YB_Daily_Avg_Flows.xlsx
-# A redundant file is in M:\Data\Inlet-Outlet_Final
+# A redundant file is in M:/YB_Inlet-Outlet_Study/Data_Final
 # This data was also added to the openwaterhg package as daily_flow_data_se
 
