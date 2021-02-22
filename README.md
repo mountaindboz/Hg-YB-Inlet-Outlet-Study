@@ -6,7 +6,7 @@ This repository contains the R files used for data analysis and final report fig
 
 This repository contains folders reflecting this categorical organization. All data files used in the R files in this repository are stored on a DWR SharePoint site for the Open Water Final Report. Final report figures and tables are stored on the same SharePoint site.
 
-This repository relies on the openwaterhg R package as a source of commonly-used functions and datasets. See the [documentation](https://mountaindboz.github.io/openwaterhg/) and [source code](https://github.com/mountaindboz/openwaterhg/) for the openwaterhg package for more information.
+This repository relies on the `openwaterhg` R package as a source of commonly-used functions and datasets. See the [documentation](https://mountaindboz.github.io/openwaterhg/) and [source code](https://github.com/mountaindboz/openwaterhg/) for the `openwaterhg` package for more information.
 
 ## Yolo Bypass Mass Balance study
 This study investigates mercury (Hg) and methylmercury (MeHg) loads entering and exiting the Yolo Bypass when it is actively flooding. The folder for this study is organized into multiple sub-folders (Concentrations, Flows, Loads, Field Measurements) based upon the type of data processed and analyzed. 
