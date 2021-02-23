@@ -4,6 +4,8 @@ Conducted by staff at the California Department of Water Resources (DWR)
 ## Background
 The focus of the Yolo Bypass Mass Balance study was to investigates mercury (Hg) and methylmercury (MeHg) loads entering and exiting the Yolo Bypass when it is actively flooding. This work is for compliance with the Delta Mercury Control Program (DMCP) promulgated by the Central Valley Regional Water Quality Control Board (CVRWQCB). DWR staff collected water samples for the study during the winters of 2014, 2016, and 2017. A majority of the samples were collected during the extended 4-month flood event in the Yolo Bypass during the winter of 2017. 
 
+![Flooded Yolo Bypass, February 2017](flooded_yb_small.jpg)
+
 ## Data Wrangling and Load Calculations
 For more information on how the water concentration and flow data were cleaned and processed and how they were used for various calculations used in this study including mass loads, check out the following links:
 
