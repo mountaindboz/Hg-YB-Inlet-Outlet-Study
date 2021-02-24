@@ -12,6 +12,9 @@ For more information on how the water concentration and flow data were cleaned a
 * [Integration, cleaning, and QA processing of water concentration data](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Compile_and_Clean_Conc_Data_FloodEvents.R)
 * [Integration, cleaning, and averaging of water flow data](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Flows/Process_Flow_Data.R)
 * [Calculation of particulate concentration data for mercury, methylmercury, and organic carbon](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Calculate_Particulate_Fractions.R)
-
+* [Calculation of combined parameters](https://github.com/mountaindboz/Open-Water-Hg-Studies/blob/master/YB_Mass_Balance/Concentrations/Calculate_CombinedParams.R) such as Hg and MeHg concentrations on solids and partitioning coefficients
+* [Calculation of mass loads](LoadCalcs_final.html) entering and exiting the Yolo Bypass
 
 ## Analyses
+
+
