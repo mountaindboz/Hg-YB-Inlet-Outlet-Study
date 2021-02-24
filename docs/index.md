@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 # Yolo Bypass Mass Balance Study
 Conducted by staff at the California Department of Water Resources (DWR)
 
